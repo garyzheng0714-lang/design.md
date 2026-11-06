@@ -1,0 +1,81 @@
+{
+  "390": {
+    "viewport": "390x844",
+    "fontSizes": [
+      12,
+      14,
+      16
+    ],
+    "fontSizeCount": 3,
+    "typeStyles": 4,
+    "textColors": 4,
+    "textBlocks": 43,
+    "chars": 158,
+    "charsPer100kPx": 48,
+    "controls": 14,
+    "controlsExcludingRepeatedRows": 4,
+    "solidAccentControls": 1,
+    "coverage": "97%",
+    "alignmentLines": 5,
+    "blocksOnLines": "74%",
+    "tightPairs": 0,
+    "borderEdges": 19,
+    "truncated": 0,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "1440": {
+    "viewport": "1440x900",
+    "fontSizes": [
+      12,
+      14,
+      18
+    ],
+    "fontSizeCount": 3,
+    "typeStyles": 6,
+    "textColors": 4,
+    "textBlocks": 146,
+    "chars": 689,
+    "charsPer100kPx": 53,
+    "controls": 2,
+    "controlsExcludingRepeatedRows": 2,
+    "solidAccentControls": 1,
+    "coverage": "15%",
+    "alignmentLines": 11,
+    "blocksOnLines": "86%",
+    "tightPairs": 0,
+    "borderEdges": 131,
+    "truncated": 0,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "id": "u",
+  "source": {
+    "files": 11,
+    "lines": 1109,
+    "suComponents": [
+      "Input",
+      "Label",
+      "ListBox",
+      "Select",
+      "TextField",
+      "ToggleButton",
+      "ToggleButtonGroup",
+      "Key",
+      "Button",
+      "Calendar",
+      "Popover",
+      "CloseButton",
+      "Drawer",
+      "ScrollShadow",
+      "TextArea",
+      "EmptyState",
+      "Table",
+      "ProgressBar",
+      "SearchField"
+    ],
+    "suComponentCount": 19,
+    "usesMotion": true,
+    "motionSites": 49
+  }
+}

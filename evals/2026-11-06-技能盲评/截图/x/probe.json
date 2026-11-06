@@ -1,0 +1,79 @@
+{
+  "390": {
+    "viewport": "390x844",
+    "fontSizes": [
+      13,
+      15,
+      20
+    ],
+    "fontSizeCount": 3,
+    "typeStyles": 4,
+    "textColors": 3,
+    "textBlocks": 63,
+    "chars": 280,
+    "charsPer100kPx": 85,
+    "controls": 41,
+    "controlsExcludingRepeatedRows": 5,
+    "solidAccentControls": 1,
+    "coverage": "50%",
+    "alignmentLines": 3,
+    "blocksOnLines": "94%",
+    "tightPairs": 0,
+    "borderEdges": 20,
+    "truncated": 0,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "1440": {
+    "viewport": "1440x900",
+    "fontSizes": [
+      13,
+      14,
+      15,
+      20
+    ],
+    "fontSizeCount": 4,
+    "typeStyles": 6,
+    "textColors": 5,
+    "textBlocks": 236,
+    "chars": 1439,
+    "charsPer100kPx": 111,
+    "controls": 57,
+    "controlsExcludingRepeatedRows": 14,
+    "solidAccentControls": 1,
+    "coverage": "45%",
+    "alignmentLines": 13,
+    "blocksOnLines": "97%",
+    "tightPairs": 0,
+    "borderEdges": 24,
+    "truncated": 0,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "id": "x",
+  "source": {
+    "files": 4,
+    "lines": 850,
+    "suComponents": [
+      "button",
+      "date-picker",
+      "drawer",
+      "field",
+      "input",
+      "select",
+      "tag",
+      "textarea",
+      "tooltip",
+      "ease",
+      "hotkeys",
+      "empty-state",
+      "nav-item",
+      "search-field",
+      "sidebar",
+      "table"
+    ],
+    "suComponentCount": 16,
+    "usesMotion": true,
+    "motionSites": 6
+  }
+}

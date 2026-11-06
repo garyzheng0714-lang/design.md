@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "design",
+  "description": "设计总纲与做界面的技能（私有）。",
+  "owner": {
+    "name": "Gary"
+  },
+  "plugins": [
+    {
+      "name": "design",
+      "source": "./plugin",
+      "description": "设计总纲 DESIGN.md、自动分流的做界面技能、写前写后的检查钩子。"
+    }
+  ]
+}

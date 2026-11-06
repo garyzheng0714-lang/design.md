@@ -1,0 +1,75 @@
+{
+  "390": {
+    "viewport": "390x844",
+    "fontSizes": [
+      12,
+      14,
+      16
+    ],
+    "fontSizeCount": 3,
+    "typeStyles": 6,
+    "textColors": 2,
+    "textBlocks": 47,
+    "chars": 212,
+    "charsPer100kPx": 64,
+    "controls": 17,
+    "controlsExcludingRepeatedRows": 4,
+    "solidAccentControls": 1,
+    "coverage": "41%",
+    "alignmentLines": 3,
+    "blocksOnLines": "94%",
+    "tightPairs": 0,
+    "borderEdges": 61,
+    "truncated": 0,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "1440": {
+    "viewport": "1440x900",
+    "fontSizes": [
+      12,
+      14,
+      24
+    ],
+    "fontSizeCount": 3,
+    "typeStyles": 6,
+    "textColors": 3,
+    "textBlocks": 210,
+    "chars": 1174,
+    "charsPer100kPx": 91,
+    "controls": 20,
+    "controlsExcludingRepeatedRows": 3,
+    "solidAccentControls": 1,
+    "coverage": "27%",
+    "alignmentLines": 12,
+    "blocksOnLines": "97%",
+    "tightPairs": 0,
+    "borderEdges": 200,
+    "truncated": 0,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "id": "h",
+  "source": {
+    "files": 3,
+    "lines": 596,
+    "suComponents": [
+      "Button",
+      "Drawer",
+      "Input",
+      "Label",
+      "ListBox",
+      "Select",
+      "TextArea",
+      "TextField",
+      "Key",
+      "ProgressBar",
+      "SearchField",
+      "Table",
+      "Selection"
+    ],
+    "suComponentCount": 13,
+    "usesMotion": true,
+    "motionSites": 9
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "390": {
+    "viewport": "390x844",
+    "fontSizes": [
+      13,
+      15,
+      20
+    ],
+    "fontSizeCount": 3,
+    "typeStyles": 3,
+    "textColors": 3,
+    "textBlocks": 38,
+    "chars": 267,
+    "charsPer100kPx": 81,
+    "controls": 15,
+    "controlsExcludingRepeatedRows": 4,
+    "solidAccentControls": 1,
+    "coverage": "83%",
+    "alignmentLines": 2,
+    "blocksOnLines": "95%",
+    "tightPairs": 0,
+    "borderEdges": 0,
+    "truncated": 0,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "1440": {
+    "viewport": "1440x900",
+    "fontSizes": [
+      13,
+      14,
+      15,
+      20
+    ],
+    "fontSizeCount": 4,
+    "typeStyles": 6,
+    "textColors": 6,
+    "textBlocks": 181,
+    "chars": 1112,
+    "charsPer100kPx": 86,
+    "controls": 28,
+    "controlsExcludingRepeatedRows": 13,
+    "solidAccentControls": 1,
+    "coverage": "33%",
+    "alignmentLines": 12,
+    "blocksOnLines": "96%",
+    "tightPairs": 0,
+    "borderEdges": 17,
+    "truncated": 1,
+    "overflowX": false,
+    "smallTextBlocks": 0
+  },
+  "id": "m",
+  "source": {
+    "files": 5,
+    "lines": 510,
+    "suComponents": [
+      "button",
+      "date-picker",
+      "drawer",
+      "input",
+      "select",
+      "tabs",
+      "tag",
+      "textarea",
+      "dialog",
+      "field",
+      "dropdown-menu",
+      "avatar",
+      "empty-state",
+      "list-item",
+      "nav-item",
+      "page",
+      "search-field",
+      "sidebar",
+      "table"
+    ],
+    "suComponentCount": 19,
+    "usesMotion": false,
+    "motionSites": 0
+  }
+}
