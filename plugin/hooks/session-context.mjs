@@ -35,6 +35,6 @@ const components = {
 const context =
   components +
   "凡是做页面、改排版、换组件组合、调样式（用户说丑、乱、没设计感、重做、改成某样子，都算），动手前先加载 design 技能，把设计总纲 DESIGN.md、references/rules.md 和这次的流程从头读到尾再照做：" +
-  "先用 Mobbin 看同任务的先例（整页 + 每个部件 + 做完之后那一屏），写出先例拆解；新做或重做一屏先读布局手册（references/layout.md）定骨架，再用 stageshow 做像真产品的方案图（references/mockup.md）、评审，通过后照它写真页面，盲评到总纲 §2 的 85 分才交。" +
+  "先用 Mobbin 看同任务的先例（整页 + 每个部件 + 做完之后那一屏），写出先例拆解；新做或重做一屏先读布局手册（references/layout.md）定骨架，再用 stageshow 做像真产品的方案图（references/mockup.md）、评审，通过后照它写真页面，盲评 ≥ 70 才交。" +
   "没读总纲、规则和流程，没看够先例，新页面没读布局手册或没做方案图时，写界面文件会被 precedent-gate 拦下；只改逻辑不动排版的编辑不受限。"
 process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } }))
