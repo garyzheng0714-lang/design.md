@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 量化探针：node probe.mjs <页面地址> [--src 页面源码目录或文件] [--out 结果.json]
 // 在 1440×900 与 390×844 的首屏量「看得见的设计感」：字号级数、字重、文字色数、常驻控件数（重复行只数一行）、文字密度、
-// 文字与控件盖住的面积、左对齐线、贴得太近的块、线条数、实心强调按钮数、横向溢出、被截断的字；--src 再从源码数用了哪些组件与动效。
+// 文字与控件盖住的面积、左对齐线、贴得太近的块、线条数、实心强调按钮数、横向溢出、被截断的字、表格相邻列距、长名单有没有翻页条；--src 再从源码数用了哪些组件与动效。
 // 最后对照 layout.md §7 的预算打印「超预算」；全在预算内打印「预算内」。预算来自 2026-11-06 同一题 7 种做法的盲评（design.md 仓库 evals/2026-11-06-技能盲评/）。
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -86,6 +86,37 @@ const MEASURE = String.raw`(() => {
   const truncated = [...document.querySelectorAll("body *")].filter((el) => { if (!shown(el)) return false; const s = getComputedStyle(el); return (s.textOverflow === "ellipsis" || s.webkitLineClamp !== "none") && el.scrollWidth > el.clientWidth + 1 && inView(el.getBoundingClientRect()) }).length
   const overflowX = document.documentElement.scrollWidth > vw + 1
   const smallText = blocks.filter((b) => b.size < 12).length
+  // 表格列距（11-07 用户：「第一个字段跟第二个字段离得这么远，间距这些都没有统一」）：这一列内容的最右缘 → 下一列内容的最左缘
+  const contentBox = (cell) => {
+    let l = Infinity, r = -Infinity
+    const add = (q) => { if (q.width > 0 && q.height > 0) { l = Math.min(l, q.left); r = Math.max(r, q.right) } }
+    const tw = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT)
+    while (tw.nextNode()) { const t = tw.currentNode; if (!t.textContent.trim() || !shown(t.parentElement)) continue; const rg = document.createRange(); rg.selectNodeContents(t); add(rg.getBoundingClientRect()) }
+    for (const e of cell.querySelectorAll("svg, img, canvas, input, [role=progressbar], [role=meter]")) if (shown(e)) add(e.getBoundingClientRect())
+    return l < r ? { l, r } : null
+  }
+  const CELL = "th, td, [role=columnheader], [role=rowheader], [role=gridcell], [role=cell]"
+  const tables = [...document.querySelectorAll("table, [role=grid], [role=table], [role=treegrid]")].filter((t) => shown(t) && inView(t.getBoundingClientRect()) && !t.parentElement.closest("table, [role=grid], [role=table], [role=treegrid]"))
+  const rowsOf = (t) => [...t.querySelectorAll("tr, [role=row]")].filter((r) => r.closest("table, [role=grid], [role=table], [role=treegrid]") === t)
+  const tableGaps = []
+  for (const t of tables) {
+    const cols = []
+    let n = 0
+    for (const row of rowsOf(t)) {
+      if (!inView(row.getBoundingClientRect())) continue
+      const cells = [...row.children].filter((c) => c.matches(CELL) && shown(c))
+      if (cells.some((c) => (c.colSpan || 1) > 1)) continue
+      n++
+      cells.forEach((c, i) => { const b = contentBox(c); if (!b) return; const k = cols[i] || (cols[i] = { l: Infinity, r: -Infinity }); k.l = Math.min(k.l, b.l); k.r = Math.max(k.r, b.r) })
+    }
+    if (n < 3 || cols.length < 3) continue
+    const gaps = []
+    for (let i = 0; i + 1 < cols.length; i++) if (cols[i] && cols[i + 1] && isFinite(cols[i].r) && isFinite(cols[i + 1].l)) gaps.push(Math.round(cols[i + 1].l - cols[i].r))
+    if (gaps.length >= 2) tableGaps.push(gaps)
+  }
+  // 翻页（11-07：「没有考虑到翻页的情况」）：表格行排到首屏以下，页面上却没有翻页条
+  const hasPagination = !!document.querySelector("[data-slot=pagination], nav[aria-label*=pagination i], [role=navigation][aria-label*=页]")
+  const longTables = tables.filter((t) => { const rows = rowsOf(t); const last = rows[rows.length - 1]; return rows.length > 3 && last.getBoundingClientRect().bottom > vh + 1 }).length
   return {
     viewport: vw + "x" + vh,
     fontSizes: sizes, fontSizeCount: sizes.length, typeStyles: styles.length, textColors: colors.length,
@@ -94,6 +125,7 @@ const MEASURE = String.raw`(() => {
     coverage: Math.round(coverage * 100) + "%",
     alignmentLines: strongLines, blocksOnLines: Math.round(onLines / Math.max(1, blocks.length) * 100) + "%",
     tightPairs: tight, borderEdges: lines, truncated, overflowX, smallTextBlocks: smallText,
+    tableGaps, longTableWithoutPagination: longTables > 0 && !hasPagination,
   }
 })()`
 
@@ -121,6 +153,8 @@ function overBudget(r) {
   if (w.truncated || n.truncated) out.push(`被截断的字：1440 有 ${w.truncated} 处、390 有 ${n.truncated} 处（关键字要 0）`)
   if (n.overflowX) out.push("390 宽横向溢出")
   if (w.tightPairs || n.tightPairs) out.push(`不同的块贴在一起：1440 ${w.tightPairs} 对、390 ${n.tightPairs} 对`)
+  for (const g of w.tableGaps || []) if (Math.max(...g) - Math.min(...g) > 16) out.push(`表格列距不统一：相邻两列内容之间 ${g.join(" / ")}px（差 ≤ 16；列宽按内容定，多出来的宽度留在最右边）`)
+  if (w.longTableWithoutPagination) out.push("名单排到首屏以下却没有翻页条（Table.Footer + Pagination）")
   if (r.source && r.source.motionSites === 0) out.push("源码里没有写任何过渡（layout.md §6 每个动作都要有）")
   return out
 }

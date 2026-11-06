@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "design",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "设计总纲 DESIGN.md 与做界面的技能：自动判断这次是新做、改骨架、打磨、动效还是接入，照设计总纲做。组件用 HeroUI 原样加红线覆盖；写界面前核对先例与方案图，写完查文案、配色、间距、原生日期框。",
   "author": {
     "name": "Gary"
