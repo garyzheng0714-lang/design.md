@@ -63,9 +63,10 @@ async function load() {
 }
 
 const rows = []
+let items = []
 try {
   await load()
-  const items = await b.eval(LIST)
+  items = await b.eval(LIST)
   const n = Math.min(items.length, max)
   for (let i = 0; i < n; i++) {
     await load()
@@ -104,4 +105,5 @@ writeFileSync(join(out, "explore.json"), JSON.stringify({ url, width, rows }, nu
 console.log(`| # | 元素 | 点了之后 |\n| - | - | - |`)
 rows.forEach((r, i) => console.log(`| ${i + 1} | ${r.label}（${r.role || r.tag}） | ${r.result} |`))
 const dead = rows.filter((r) => r.result.startsWith("死点")).length, bad = rows.filter((r) => r.result.startsWith("坏点")).length
-console.log(`\n能操作 ${rows.length} 个，死点 ${dead} 个，坏点 ${bad} 个。写进 ${join(out, "explore.json")}`)
+const clicked = rows.filter((r) => r.result).length
+console.log(`\n点了 ${clicked} 个${items.length > clicked ? `（共 ${items.length} 个能操作）` : ""}，死点 ${dead} 个，坏点 ${bad} 个。写进 ${join(out, "explore.json")}`)
