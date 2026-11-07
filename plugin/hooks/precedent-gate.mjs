@@ -17,7 +17,7 @@
 //   ② 本会话还没做过方案图（没写过含 <Stage 的代码），而且目标文件不在方案图目录里（祖先目录有 kit/stageshow.css 的就是方案图本身）。
 // 第三道（设计法则 + 监工，用户 2026-11-07）：同样的真页面（不是方案图），
 //   ① 本会话还没从头到尾读过 methods/better-layout 与 better-writing 的 SKILL.md（11-07 实测：做页面的会话一份设计法则都没读）；
-//   ② Claude Code 主会话：还没起过监工（Agent 工具，subagent_type 为 design:supervisor），或上一块真页面写完之后没再叫过它（起它或 SendMessage 给它）；
+//   ② Claude Code 主会话：还没起过监工（Agent 工具，subagent_type 为 design:supervisor），或上一块真页面写完之后没再叫过它就开写新的一块（起它或 SendMessage 给它；一块 = 第一次写的文件，回头改写过的文件不算新的一块）；
 //      Codex 和子智能体里起不了子智能体：还没从头到尾读过插件的 agents/supervisor.md（照它自审）。放行时记下这一块，体验关卡（ux-gate，收尾前）接着用。
 //   用户说过「跳过监工」只放监工那一项。
 // 不拦：不是使用方项目；不是界面文件；components/ui（旧项目装进来的 @su 组件，换 HeroUI 时整个删）；只改逻辑、不动排版的编辑
@@ -128,14 +128,17 @@ if (!skipAll && (missLayout || (missMockup && !skipMockup))) {
 }
 
 // 第三道：设计法则 + 监工（用户 2026-11-07：监工「对每一个操作细节和交互做审核……目的就是不让做设计的智能体偷懒」）。
-// 只查真页面（新页面、整页改版，不是方案图）。Claude Code 主会话：第一次写之前起过 design:supervisor，之后每写一块之前，
-// 上一块写完以后至少再叫过它一次（起它或 SendMessage 给它）。Codex 与子智能体起不了子智能体：读完 agents/supervisor.md 照它自审。
+// 只查真页面（新页面、整页改版，不是方案图）。Claude Code 主会话：第一次写之前起过 design:supervisor，之后每写一块新文件之前，
+// 上一块新文件写完以后至少再叫过它一次（起它或 SendMessage 给它）；回头改已经写过的文件起过监工就放。Codex 与子智能体起不了子智能体：读完 agents/supervisor.md 照它自审。
 if (needMockup.length && !skipAll) {
   const methods = scanned().methods
   const selfReview = isCodex(files) || Boolean(input.agent_id)
   const sup = agentTrail(files, "supervisor"), ux = agentTrail(files, "ux")
   const last = readStamp(sessionId, "page")
-  const supOk = userSkipped(/跳过监工/) || (selfReview ? sup.reads > 0 : sup.calls > (last?.sup ?? 0))
+  // 一块 = 第一次写的真页面文件。回头改已经写过的文件（照监工的表改）不算新的一块，起过监工就放（11-07 第四轮：送审后照意见改了上一块，再写下一块被拦，提示说「还没送监工看」，做页面的智能体去翻关卡源码）
+  const seen = new Set(last?.seen ?? [])
+  const fresh = needMockup.filter((t) => !seen.has(t.path))
+  const supOk = userSkipped(/跳过监工/) || (selfReview ? sup.reads > 0 : sup.calls > (fresh.length ? (last?.sup ?? 0) : 0))
   if (!methods || !supOk) {
     const missing = [
       !methods && "还没从头到尾读过 better-layout 和 better-writing（design 技能 methods/ 下的两份 SKILL.md）",
@@ -153,7 +156,10 @@ if (needMockup.length && !skipAll) {
     )
     process.exit(2)
   }
-  writeStamp(sessionId, "page", { sup: sup.calls, ux: ux.calls, uxReads: ux.reads, files: needMockup.map((t) => basename(t.path)) })
+  // sup：最近一块新文件写下时叫过监工几次（下一块新文件要比它多）；ux：最近一次写真页面时体验员走过几次（ux-gate 要比它多）
+  writeStamp(sessionId, "page", fresh.length
+    ? { sup: sup.calls, ux: ux.calls, uxReads: ux.reads, files: fresh.map((t) => basename(t.path)), seen: [...seen, ...fresh.map((t) => t.path)] }
+    : { ...last, ux: ux.calls, uxReads: ux.reads })
 }
 process.exit(0)
 

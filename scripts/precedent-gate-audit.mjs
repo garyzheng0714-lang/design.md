@@ -270,6 +270,10 @@ try {
   seq("连写两块", [[first, "orders.tsx", 0], [first, "detail.tsx", 2, "orders.tsx"], [[...first, ...send("g2")], "detail.tsx", 0], [[...first, ...send("g2")], "list.tsx", 2, "detail.tsx"]])
   seq("SendMessage 给别人不算", [[first, "orders.tsx", 0], [[...first, ...send("g2", "a0ther")], "detail.tsx", 2]])
   seq("再起一个监工也算", [[first, "orders.tsx", 0], [[...first, ...spawn("g3", { agentId: "a2nd" })], "detail.tsx", 0]])
+  // 一块 = 第一次写的文件；照监工的表回头改写过的文件不算新的一块（11-07 第四轮：送审后改了上一块，再写下一块被拦）
+  seq("改刚写的那块不用再叫", [[first, "orders.tsx", 0], [first, "orders.tsx", 0]])
+  seq("送审后改上一块，再写下一块", [[first, "orders.tsx", 0], [[...first, ...send("g2")], "orders.tsx", 0], [[...first, ...send("g2")], "detail.tsx", 0]])
+  seq("改完上一块、没送审就写下一块", [[first, "orders.tsx", 0], [first, "orders.tsx", 0], [first, "detail.tsx", 2, "orders.tsx"]])
 
   // 体验关卡（Stop）：写过真页面、最后一块之后没让体验员走过，拦一次
   const UX = resolve(process.env.UX_GATE ?? "plugin/hooks/ux-gate.mjs")
