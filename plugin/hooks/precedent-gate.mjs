@@ -27,7 +27,7 @@
 // Claude Code 与 Codex 共用：Claude 的 Write / Edit / MultiEdit，Codex 的 apply_patch，以及两边的 Bash 里写界面文件的命令
 // （sed -i、重定向、tee、cp / mv 目标、脚本里写文件调用的目标路径；2026-10-08 实测被拦的会话提出过「换一种方式改」）；拦截 = 退出码 2 + stderr。
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { basename, dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { AGENTS, agentTrail, isCodex, readStamp, transcriptFiles, userSaid, writeStamp } from "./lib/trail.mjs"
@@ -211,14 +211,32 @@ function collectTargets(tool, ti) {
  *  重定向、tee、sed -i、cp / mv 只在 shell 这一层找；脚本里的写文件调用另看 scriptWrites */
 function shellWrites(cmd) {
   const sh = shellText(cmd)
+  const steps = cdSteps(sh)
+  const at = (m) => resolve(dirAt(steps, m.index), m[2])
   const hits = [
-    ...[...sh.matchAll(new RegExp(String.raw`(?:>>?|\btee(?:\s+-a)?)\s*` + UI_FILE, "g"))].map((m) => m[2]),
-    ...(/\b(sed|perl)\b[^|;&]*\s-[a-z]*i/.test(sh) ? [...sh.matchAll(new RegExp(String.raw`\s` + UI_FILE + String.raw`(?=\s*(?:$|[|;&]))`, "gm"))].map((m) => m[2]) : []),
-    ...[...sh.matchAll(new RegExp(String.raw`\b(?:cp|mv)\b(?:[^|;&\n]|\\\n)*\s` + UI_FILE + String.raw`(?=\s*(?:$|[|;&]))`, "gm"))].map((m) => m[2]), // 目标只在同一行（含 \ 续行）找
-    ...scriptWrites(cmd),
+    ...[...sh.matchAll(new RegExp(String.raw`(?:>>?|\btee(?:\s+-a)?)\s*` + UI_FILE, "g"))].map(at),
+    ...(/\b(sed|perl)\b[^|;&]*\s-[a-z]*i/.test(sh) ? [...sh.matchAll(new RegExp(String.raw`\s` + UI_FILE + String.raw`(?=\s*(?:$|[|;&]))`, "gm"))].map(at) : []),
+    ...[...sh.matchAll(new RegExp(String.raw`\b(?:cp|mv)\b(?:[^|;&\n]|\\\n)*\s` + UI_FILE + String.raw`(?=\s*(?:$|[|;&]))`, "gm"))].map(at), // 目标只在同一行（含 \ 续行）找
+    ...scriptWrites(cmd).map((p) => resolve(dirAt(steps, Infinity), p)), // 脚本在最后一次 cd 之后运行（脚本自己 chdir 的不管）
   ]
   return [...new Set(hits)].map((path) => ({ path, before: "", after: cmd, shell: true }))
 }
+
+/** shell 这一层的 cd / pushd：[{ at, dir }]，相对路径接着上一次算；目标取不到（cd -、cd "$X"）就当没换。
+ *  相对路径按写入那一刻所在的目录算（2026-11-07 第四轮：会话先 cd 进方案图的 kit/，再「cd 项目 && cat > src/pages/y-design/main.tsx」，
+ *  原先按会话目录拼成 kit/src/pages/…，认不出它在方案图目录里，误当真页面拦下；反过来从项目外 cd 进去写真页面会漏拦） */
+function cdSteps(sh) {
+  const steps = []
+  let dir = cwd
+  for (const m of sh.matchAll(/(?:^|[;&|(\n]|\b(?:do|then)\b)\s*(?:builtin\s+)?(?:cd|pushd)(?:\s+--)?\s+(?:(['"])([^'"\n]*)\1|([^\s;&|)]+))/g)) {
+    const raw = m[2] ?? m[3]
+    if (raw === "-" || raw.includes("$") || raw.includes("`")) continue
+    dir = resolve(dir, raw === "~" ? homedir() : raw.replace(/^~(?=\/)/, homedir()))
+    steps.push({ at: m.index + m[0].length, dir })
+  }
+  return steps
+}
+function dirAt(steps, at) { return steps.filter((s) => s.at <= at).at(-1)?.dir ?? cwd }
 
 /** 命令里 shell 自己执行的那一层。heredoc 正文、python -c / node -e 的脚本是数据，去掉：
  *  2026-10-16 heredoc 里的 JS 箭头 `=> "web/src/styles/app.css"` 被当成重定向 `> app.css` 拦下。

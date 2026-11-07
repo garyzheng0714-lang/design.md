@@ -239,6 +239,13 @@ const cases = [
   ["跳过监工，设计法则照读", 2, write(transcript("skip-sup-no-methods", [...stagedBase, line({ type: "user", message: { role: "user", content: "跳过监工" } })]), "orders.tsx", PAGE), "better-layout"],
   ["方案图本身不查监工", 0, writeAt(noSup, join(scene, "hero.tsx"), '<Stage width={1100} height={560}><Row /></Stage>')],
   ["小改不查监工", 0, editHero(noSup, 'className="mx-auto w-full max-w-xl"', 'className="mx-auto w-full max-w-lg"')],
+  // 命令里先 cd 再写相对路径：按写入那一刻的目录算（11-07 第四轮：会话停在方案图的 kit/ 里，cd 回项目写方案图入口被当真页面拦下）
+  ["会话停在方案图 kit 的子目录里，cd 回项目写方案图入口", 0, { ...bash(noSup, `cd ${join(app, "web")} && cat > design/orders/main.tsx <<'EOF'\ncreateRoot(el).render(<StrictMode><Mockup /><Toaster /></StrictMode>)\nEOF`), cwd: join(scene, "kit/motion") }],
+  ["会话在项目外，cd 进项目写真页面", 2, { ...bash(noSup, `cd ${app} && cat > web/src/pages/orders.tsx <<'EOF'\nexport default function Orders() { return <Page><Header /><List /></Page> }\nEOF`), cwd: root }, "design:supervisor"],
+  ["相对 cd 之后 sed 改页面", 2, { ...bash(none, "cd web && sed -i '' 's/max-w-xl/max-w-lg/' src/pages/create.tsx"), cwd: app }],
+  ["会话在项目外，cd 进项目跑 python 写 .css", 2, { ...bash(none, `cd ${join(app, "web")} && python3 - <<'EOF'\nopen('src/styles/app.css', 'w').write(':root {}')\nEOF`), cwd: root }],
+  ["写完才 cd，按原目录算", 2, bash(none, `cat > web/src/pages/new.tsx <<'EOF'\n<Page />\nEOF\ncd /tmp`)],
+  ["cd 到取不到的变量，照会话目录算", 2, bash(none, `cd "$ROOT" && sed -i '' 's/a/b/' web/src/pages/create.tsx`)],
 ]
 
 try {
