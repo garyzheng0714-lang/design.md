@@ -15,16 +15,22 @@
 // 第二道（布局手册 + 方案图）：使用方项目里新建页面（新文件、≥ 3 个 JSX 标签）或整页改版（排版记号增删 ≥ 20），
 //   ① 本会话还没从头到尾读过 references/layout.md（2026-11-06 盲评后写的布局手册：姿态、三版骨架、形状、区域 → 组件、披露、因果、预算），方案图本身也要先读；
 //   ② 本会话还没做过方案图（没写过含 <Stage 的代码），而且目标文件不在方案图目录里（祖先目录有 kit/stageshow.css 的就是方案图本身）。
+// 第三道（设计法则 + 监工，用户 2026-11-07）：同样的真页面（不是方案图），
+//   ① 本会话还没从头到尾读过 methods/better-layout 与 better-writing 的 SKILL.md（11-07 实测：做页面的会话一份设计法则都没读）；
+//   ② Claude Code 主会话：还没起过监工（Agent 工具，subagent_type 为 design:supervisor），或上一块真页面写完之后没再叫过它（起它或 SendMessage 给它）；
+//      Codex 和子智能体里起不了子智能体：还没从头到尾读过插件的 agents/supervisor.md（照它自审）。放行时记下这一块，体验关卡（ux-gate，收尾前）接着用。
+//   用户说过「跳过监工」只放监工那一项。
 // 不拦：不是使用方项目；不是界面文件；components/ui（旧项目装进来的 @su 组件，换 HeroUI 时整个删）；只改逻辑、不动排版的编辑
 //   （前后的 JSX 标签、className、样式类与 style 完全一样）；技能自带的文件（skills/<名字>/assets、methods）；
 //   用户在本会话亲口说过「跳过先例」（两道都放）或「跳过方案图」「跳过线框」（只放方案图那一项，布局手册照读）；
 //   读不到会话记录（无法判定时放行，免得把会话卡死）。
 // Claude Code 与 Codex 共用：Claude 的 Write / Edit / MultiEdit，Codex 的 apply_patch，以及两边的 Bash 里写界面文件的命令
 // （sed -i、重定向、tee、cp / mv 目标、脚本里写文件调用的目标路径；2026-10-08 实测被拦的会话提出过「换一种方式改」）；拦截 = 退出码 2 + stderr。
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { AGENTS, agentTrail, isCodex, readStamp, transcriptFiles, userSaid, writeStamp } from "./lib/trail.mjs"
 
 const NEED_SEARCHES = 2
 const NEED_IMAGES = 10
@@ -44,7 +50,9 @@ const REF_PATH = "design/references/"
 const STAGESHOW_PATH = "design/methods/stageshow/"
 const CHARTER_PATH = "design/DESIGN.md"
 /** 工具调用的参数里提到这些路径，才去看它的结果（技能目录、总纲；仓库根的 DESIGN.md 也算） */
-const TRACK = /design\/(references|methods\/stageshow)\/|DESIGN\.md/
+const TRACK = /design\/(references|methods\/(stageshow|better-layout|better-writing))\/|DESIGN\.md/
+/** 写真页面前要读完的设计法则（用户 2026-11-07：「很多设计法则、人家现成的 skill 让你去参考，你也不去参考，自己在那里乱搞」） */
+const METHODS = ["better-layout", "better-writing"].map((m) => `design/methods/${m}/SKILL.md`)
 const SKILLS = join(dirname(fileURLToPath(import.meta.url)), "../skills")
 const FLOWS = ["mockup.md", "build.md", "polish.md", "motion.md", "connect.md"].map((f) => REF_PATH + f).concat(STAGESHOW_PATH + "SKILL.md")
 /** 读全一份文件的凭据：它的首行和末行都出现在同一次读取的结果里 */
@@ -117,6 +125,35 @@ if (!skipAll && (missLayout || (missMockup && !skipMockup))) {
       : ""),
   )
   process.exit(2)
+}
+
+// 第三道：设计法则 + 监工（用户 2026-11-07：监工「对每一个操作细节和交互做审核……目的就是不让做设计的智能体偷懒」）。
+// 只查真页面（新页面、整页改版，不是方案图）。Claude Code 主会话：第一次写之前起过 design:supervisor，之后每写一块之前，
+// 上一块写完以后至少再叫过它一次（起它或 SendMessage 给它）。Codex 与子智能体起不了子智能体：读完 agents/supervisor.md 照它自审。
+if (needMockup.length && !skipAll) {
+  const methods = scanned().methods
+  const selfReview = isCodex(files) || Boolean(input.agent_id)
+  const sup = agentTrail(files, "supervisor"), ux = agentTrail(files, "ux")
+  const last = readStamp(sessionId, "page")
+  const supOk = userSkipped(/跳过监工/) || (selfReview ? sup.reads > 0 : sup.calls > (last?.sup ?? 0))
+  if (!methods || !supOk) {
+    const missing = [
+      !methods && "还没从头到尾读过 better-layout 和 better-writing（design 技能 methods/ 下的两份 SKILL.md）",
+      !supOk && (selfReview ? "还没读完监工的清单" : last ? `上一块（${last.files.join("、")}）写完还没送监工看` : "还没起监工"),
+    ].filter(Boolean)
+    process.stderr.write(
+      `设计监工关卡：${names(needMockup)} 是真页面，本会话${missing.join("；")}。\n` +
+      (!methods ? "先从头读 design 技能的 methods/better-layout/SKILL.md 和 methods/better-writing/SKILL.md（布局与文案的法则），写的时候照它们。\n" : "") +
+      (!supOk
+        ? selfReview
+          ? `这里起不了子智能体：从头读 ${join(AGENTS, "supervisor.md")}，照它逐处自审每一块（汇报里标「自审」）。\n`
+          : "写真页面时监工一直开着（build.md 第 5 步）：第一次用 Agent 工具起 design:supervisor，把功能清单、2.5 的六样和方案图给它，先审组件；" +
+            "之后每写完一块就 SendMessage 告诉它「写好了 <文件>」，照它交回的表改完再写下一块。用户明确不要监工时，请用户说一句「跳过监工」。\n"
+        : ""),
+    )
+    process.exit(2)
+  }
+  writeStamp(sessionId, "page", { sup: sup.calls, ux: ux.calls, uxReads: ux.reads, files: needMockup.map((t) => basename(t.path)) })
 }
 process.exit(0)
 
@@ -330,16 +367,6 @@ function layoutTokens(s) {
 }
 function layoutSig(s) { return layoutTokens(s).join(" ") }
 
-/** 这一行是用户亲口说的话（不是工具结果、不是本关卡的提示、不是技能正文） */
-function userSaid(line, re = /跳过先例/) {
-  let d
-  try { d = JSON.parse(line) } catch { return false }
-  const text = (c) => (typeof c === "string" ? c : Array.isArray(c) ? c.filter((x) => x.type === "text" || x.type === "input_text").map((x) => x.text).join("\n") : "")
-  if (d.type === "user" && !d.isMeta) return re.test(text(d.message?.content)) && !/Base directory for this skill|precedent-gate|先例关卡|方案图关卡/.test(text(d.message?.content))
-  if (d.payload?.type === "message" && d.payload.role === "user") return re.test(text(d.payload.content)) && !/<skill>|先例关卡|方案图关卡/.test(text(d.payload.content))
-  return false
-}
-
 /** 向上找使用方项目（"consumer"：依赖 @heroui/react，或引了 @su 的旧项目），遇到 git 根就停 */
 function suProject(dir) {
   for (let d = dir, i = 0; i < 12; i++, d = dirname(d)) {
@@ -352,24 +379,15 @@ function suProject(dir) {
   return false
 }
 
-/** 本会话的记录：主记录、子智能体记录（先例可以由主会话看，也可以由子智能体自己看） */
-function transcriptFiles(i) {
-  const list = [i.transcript_path, i.agent_transcript_path].filter((p) => p && existsSync(p))
-  if (i.transcript_path && i.session_id) {
-    const sub = join(dirname(i.transcript_path), i.session_id, "subagents")
-    if (existsSync(sub)) for (const f of readdirSync(sub)) if (f.endsWith(".jsonl")) list.push(join(sub, f))
-  }
-  return [...new Set(list)].filter((p) => statSync(p).isFile())
-}
-
 /** 只认结构化的工具调用和它的结果，不认正文里提到的名字和路径（本关卡的提示里就有这些字） */
 function scan(paths) {
-  const seen = { charter: false, rules: false, flow: false, layout: false, searches: 0, images: 0 }
+  const seen = { charter: false, rules: false, flow: false, layout: false, methods: false, searches: 0, images: 0 }
   const calls = new Map() // Mobbin 调用 → 图数
   const codexCalls = new Set() // 其中 Codex function_call 记下的那些
   const codexItems = new Map() // Codex 跑完的 McpToolCall → 图数（code-mode 里嵌套的调用只有这一条记录）
   const reads = new Set() // 读 references/ 的调用
-  const rules = proof(REF_PATH + "rules.md"), layout = proof(REF_PATH + "layout.md"), flows = FLOWS.map(proof)
+  const rules = proof(REF_PATH + "rules.md"), layout = proof(REF_PATH + "layout.md"), flows = FLOWS.map(proof), methods = METHODS.map(proof)
+  const methodRead = methods.map(() => false)
   const [charterHead, charterTail] = charterProof()
   let head = false, tail = false
   const readAll = (out) => {
@@ -380,11 +398,13 @@ function scan(paths) {
     if (rules.every((l) => t.includes(l))) seen.rules = true
     if (layout.every((l) => t.includes(l))) seen.layout = true
     if (flows.some((f) => f.every((l) => t.includes(l)))) seen.flow = true
+    methods.forEach((m, i) => { if (m.every((l) => t.includes(l))) methodRead[i] = true })
+    seen.methods = methodRead.every(Boolean)
   }
   for (const p of paths) {
     for (const line of readFileSync(p, "utf8").split("\n")) {
       // 大多数行与本关卡无关；只解析提到 mobbin / references 的行，和已记下的调用的返回
-      if (!line.includes("mobbin") && !line.includes(REF_PATH) && !line.includes(STAGESHOW_PATH) && !line.includes("DESIGN.md") && ![...calls.keys(), ...reads].some((id) => id && line.includes(id))) continue
+      if (!line.includes("mobbin") && !line.includes(REF_PATH) && !line.includes(STAGESHOW_PATH) && !line.includes("design/methods/better-") && !line.includes("DESIGN.md") && ![...calls.keys(), ...reads].some((id) => id && line.includes(id))) continue
       let d
       try { d = JSON.parse(line) } catch { continue }
       // Claude Code：assistant 的 tool_use，user 的 tool_result

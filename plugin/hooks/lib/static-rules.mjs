@@ -1,4 +1,4 @@
-// 静态红线的规则本体（DESIGN.md 红线 2 文案、6 圆角与拐角形状、7 配色、11 间距，加原生日期框）：只管「一个文件的文本 → 问题列表」，不找文件、不打印。
+// 静态红线的规则本体（DESIGN.md 红线 1 文案与点分隔、6 圆角与拐角形状、7 配色、11 间距，加原生日期框）：只管「一个文件的文本 → 问题列表」，不找文件、不打印。
 // 用它的地方：scripts/radius-static.mjs、color-static.mjs、copy-audit.mjs（查 Su 仓库或传进来的使用方目录），
 // 以及 hooks/static-gate.mjs（使用方项目里改完界面文件就查那一个文件）。改规则只改这里，两边自动一致。
 // 问题一律是 { line, message }，line 从 1 起。
@@ -242,6 +242,22 @@ export function tightProblems(text) {
     const m = line.match(TIGHT)
     if (m) out.push({ line: i + 1, message: `日期 / 数字紧贴汉字「${m[0]}」：汉字与数字之间手写一个半角空格（9 月 30 日，设计总纲 §7）` })
   })
+  return out
+}
+
+// 布局优先于文字（DESIGN.md 红线 1，用户 2026-11-07：「任何情况下……我都不允许出现“一个东西中间加一个点再接一个东西”。你要用就去找组件来用」）：
+// 内容之间的点（· • ・ ‧ ∙，连同 &middot; &bull;、JS 的 \u00b7 与 CSS 的 \00b7 这类转义）一律退回，没有放行写法；连着两个以上的同一个点是密码掩码，不算分隔。
+// 数数写成句子（「共 28 家」「共 {n} 条」）同样退回：数量画成组件（进度环、计量条、徽标），翻页条只放页码。注释不查。
+const DOT = /(?<![·•・‧∙])[·•・‧∙](?![·•・‧∙])|&(?:middot|centerdot|bull|bullet);|\\u(?:00b7|2022|30fb|2027|2219)|\\x[bB]7|\\0{0,2}(?:b7|2022|30fb|2027|2219)(?![\da-f])/gi
+const COUNT_SENTENCE = /共\s*(?:\d+|\$\{[^}\n]+\}|\{[^}\n]+\})\s*(?:条|家|项|个|件|人|页|位|笔|次)/g
+
+/** 点分隔与数数句：所有界面文件都查（脚本与 CSS 的 content）。 */
+export function layoutTextProblems(text) {
+  const out = []
+  const source = stripComments(text)
+  const line = (i) => source.slice(0, i).split("\n").length
+  for (const m of source.matchAll(DOT)) out.push({ line: line(m.index), message: `用点「${m[0]}」分隔内容（红线 1 布局优先于文字）：拆成两个元素，用组件或布局分开（标签、两列、分组、表格列）` })
+  for (const m of source.matchAll(COUNT_SENTENCE)) out.push({ line: line(m.index), message: `数数写成句子「${m[0]}」（红线 1）：数量画成组件（进度环、计量条、徽标），翻页条只放页码` })
   return out
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 改后检查（design 插件；2026-11-07 从 Su Design 的 su-design 插件搬来）：使用方项目里改完界面文件，马上照设计总纲查这个文件的文案、圆角、配色、间距、原生日期框，不合规就把问题退回给智能体。
+// 改后检查（design 插件；2026-11-07 从 Su Design 的 su-design 插件搬来）：使用方项目里改完界面文件，马上照设计总纲查这个文件的文案（含点分隔与数数句，11-07）、圆角、配色、间距、原生日期框，不合规就把问题退回给智能体。
 // 用户 2026-10-15：「给 su-design 插件加改界面文件后自动跑文案、圆角、颜色检查的钩子」。起因：7 个用 @su 的项目没有一个接 Su 的检查，
 // 说明句、圆角、颜色这几类纠正在不同项目里反复出现。规则本体在 lib/static-rules.mjs（最早和 Su 仓库的 copy-audit、radius-static、color-static 共用，现在以这份为准）。
 // 查：Claude 的 Write / Edit / MultiEdit、Codex 的 apply_patch 刚写过的文件。.tsx / .ts 查文案（句子、日期紧贴）；.tsx / .ts / .jsx / .js 查圆角；再加 .css 查拐角形状、配色与间距（4 的倍数，2026-10-30）。
@@ -14,7 +14,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join, relative, resolve } from "node:path"
-import { colorProblems, nativeDateProblems, radiusAllowed, radiusProblems, sentenceProblems, shapeProblems, spaceProblems, tightProblems } from "./lib/static-rules.mjs"
+import { colorProblems, layoutTextProblems, nativeDateProblems, radiusAllowed, radiusProblems, sentenceProblems, shapeProblems, spaceProblems, tightProblems } from "./lib/static-rules.mjs"
 
 const MAX_LINES = 30
 const SKIP = /(^|\/)(node_modules|dist|build|\.next|coverage|components\/ui|lib|demo)\/|(^|\/)styles\/(ds-[\w-]+|heroui-theme)\.css$|\.(test|spec|stories)\.[jt]sx?$|\.d\.ts$/
@@ -26,7 +26,7 @@ try { report = check() } catch { process.exit(0) }
 if (!report.length) process.exit(0)
 const shown = report.slice(0, MAX_LINES)
 process.stderr.write(
-  `改后检查：刚改的文件里有 ${report.length} 处不合设计总纲，先改掉再继续（标准见 design 技能 DESIGN.md 红线 2、6、7、11、14）。\n` +
+  `改后检查：刚改的文件里有 ${report.length} 处不合设计总纲，先改掉再继续（标准见 design 技能 DESIGN.md 红线 1、6、7、11、14）。\n` +
   shown.join("\n") + (report.length > shown.length ? `\n……还有 ${report.length - shown.length} 处` : "") + "\n" +
   "写给用户的句子确实要留：上一行加 // 必要提示：理由。照用户参考图写死的圆角、颜色或间距：上一行加 // 参考图：出处。\n",
 )
@@ -45,6 +45,7 @@ function check() {
       ...(/\.tsx?$/.test(file) ? [...sentenceProblems(text), ...tightProblems(text)] : []),
       ...(/\.[jt]sx?$/.test(file) && !heroui ? radius(root, file, text) : []),
       ...(/\.[jt]sx?$/.test(file) ? nativeDateProblems(text) : []),
+      ...layoutTextProblems(text),
       ...(heroui ? [] : shapeProblems(text)),
       ...colorProblems(text),
       ...spaceProblems(text, file, { textMargin: !heroui }),

@@ -30,7 +30,7 @@
 }
 
 @layer components {
-  /* 1 · 加了框线，靠内边距撑高的输入类上下各让一道线宽，高度仍是 HeroUI 的 36，和定高的搜索框、按钮并排不错位 */
+  /* 1：加了框线，靠内边距撑高的输入类上下各让一道线宽，高度仍是 HeroUI 的 36，和定高的搜索框、按钮并排不错位 */
   .input,
   .textarea,
   .select__trigger,
@@ -39,7 +39,7 @@
     padding-block: calc(var(--spacing) * 2 - var(--border-width-field));
   }
 
-  /* 1 · secondary 变体照默认版：白底，悬停、聚焦用控件自己的变量 */
+  /* 1：secondary 变体照默认版：白底，悬停、聚焦用控件自己的变量 */
   .input--secondary {
     --input-bg: var(--field-background);
     --input-bg-hover: var(--field-hover);
@@ -98,7 +98,7 @@
     --radio-control-bg-hover: var(--field-hover);
   }
 
-  /* 1 · 次按钮、三级按钮：白底 + 框线，悬停、按下铺 HeroUI 的灰（同 outline）；字色照 HeroUI */
+  /* 1：次按钮、三级按钮：白底 + 框线，悬停、按下铺 HeroUI 的灰（同 outline）；字色照 HeroUI */
   .button--secondary,
   .button--tertiary {
     --button-bg: var(--field-background);
@@ -107,7 +107,7 @@
     border: var(--border-width-field) solid var(--field-border);
   }
 
-  /* 1 · 切换按钮（分段）：没选中白底 + 框线；选中照 HeroUI（浅主色） */
+  /* 1：切换按钮（分段）：没选中白底 + 框线；选中照 HeroUI（浅主色） */
   .toggle-button,
   .toggle-button--default {
     --toggle-button-bg: var(--field-background);
@@ -129,7 +129,7 @@
     display: none;
   }
 
-  /* 1 · 标签轨道：白底 + 框线（内描边，不改尺寸）；选中块换成 HeroUI 的灰、去投影，白底上才看得出 */
+  /* 1：标签轨道：白底 + 框线（内描边，不改尺寸）；选中块换成 HeroUI 的灰、去投影，白底上才看得出 */
   .tabs__list-container {
     background-color: var(--field-background);
     box-shadow: inset 0 0 0 var(--border-width-field) var(--field-border);

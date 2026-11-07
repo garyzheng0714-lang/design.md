@@ -11,7 +11,7 @@ description: 做任何界面之前必须先加载：新页面、改版、出方�
 
 | 这次要做的事 | 读 | 做到哪 |
 | --- | --- | --- |
-| 新做一屏、重做、动骨架（换分区、挪主动作、换组件组合、改信息归属或任务路径） | [mockup.md](references/mockup.md) → [layout.md](references/layout.md) → [build.md](references/build.md) | 评审无致命，交付 |
+| 新做一屏、重做、动骨架（换分区、挪主动作、换组件组合、改信息归属或任务路径） | [mockup.md](references/mockup.md) → [layout.md](references/layout.md) → [build.md](references/build.md)（写时监工在旁，写完体验员走一遍） | 评审无致命，交付 |
 | 用户只要先看方案、效果图 | [mockup.md](references/mockup.md) → [layout.md](references/layout.md) | 评审通过就停，给用户看 |
 | 产品演示动画、带光标的走查、官网或文档的产品插图、功能卡配图 | [stageshow](methods/stageshow/SKILL.md)（舞台里用项目自己的组件） | 排练通过（`rehearsal passed`）就交 |
 | 骨架不动，改间距、对齐、字、颜色、圆角、图标、文案、状态 | [polish.md](references/polish.md) | 交付 |

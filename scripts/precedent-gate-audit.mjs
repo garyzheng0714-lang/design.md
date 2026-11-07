@@ -60,14 +60,37 @@ const ok = transcript("ok", [...skill, ...search(1, 6), ...search(2, 6)])
 const wired = transcript("wired", [...skill, ...search(1, 6), ...search(2, 6), line({ type: "assistant", message: { content: [{ type: "tool_use", id: "w1", name: "Write", input: { file_path: "x.tsx", content: '<Wire label="表" use="Table" />' } }] } })])
 // 布局手册（2026-11-06）：新页面、整页改版、方案图本身都要先从头到尾读过 references/layout.md
 const layout = read("r3", "layout.md")
+// 第三道（11-07）：真页面前读完 better-layout、better-writing；监工 design:supervisor 起过，之后每一块之前再叫过它
+const METHOD = (m) => join(SKILL, "methods", m)
+const methodsRead = [...read("r5", "SKILL.md", { dir: METHOD("better-layout") }), ...read("r6", "SKILL.md", { dir: METHOD("better-writing") })]
+const SUP_ID = "a5up3rv150r"
+const spawn = (id, { type = "design:supervisor", is_error = false, agentId = SUP_ID } = {}) => [
+  line({ type: "assistant", message: { content: [{ type: "tool_use", id, name: "Agent", input: { subagent_type: type, description: "审组件", prompt: "功能清单……" } }] } }),
+  line({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, is_error, content: is_error ? "Agent type 'design:supervisor' not found" : [{ type: "text", text: `| 位置 | 现在 | 应该 | 依据 |\nagentId: ${agentId} (internal ID)` }] }] } }),
+]
+const send = (id, to = SUP_ID) => [
+  line({ type: "assistant", message: { content: [{ type: "tool_use", id, name: "SendMessage", input: { to, message: "写好了 orders.tsx" } }] } }),
+  line({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: "Message sent" }] } }),
+]
+const work = [...methodsRead, ...spawn("g1")]
+const AGENT_DIR = resolve("plugin/agents")
 const stageWrite = line({ type: "assistant", message: { content: [{ type: "tool_use", id: "w1", name: "Write", input: { file_path: "web/design/orders/hero.tsx", content: '<Stage width={1100} height={560} />' } }] } })
 const laidOut = transcript("laid-out", [...skill, ...layout, ...search(1, 6), ...search(2, 6)])
 const layoutHalf = transcript("layout-half", [...skill, ...read("r3", "layout.md", { result: (t) => numbered(t.slice(0, t.length / 2)) }), ...search(1, 6), ...search(2, 6)])
-const staged = transcript("staged", [...skill, ...layout, ...search(1, 6), ...search(2, 6), stageWrite])
+const staged = transcript("staged", [...skill, ...layout, ...search(1, 6), ...search(2, 6), stageWrite, ...work])
+const stagedBase = [...skill, ...layout, ...search(1, 6), ...search(2, 6), stageWrite]
+const noMethods = transcript("no-methods", [...stagedBase, ...spawn("g1")])
+const halfMethods = transcript("half-methods", [...stagedBase, ...read("r5", "SKILL.md", { dir: METHOD("better-layout") }), ...spawn("g1")])
+const noSup = transcript("no-sup", [...stagedBase, ...methodsRead])
+const supFailed = transcript("sup-failed", [...stagedBase, ...methodsRead, ...spawn("g1", { is_error: true })])
+const otherAgent = transcript("other-agent", [...stagedBase, ...methodsRead, ...spawn("g1", { type: "general-purpose" })])
+const supInText = transcript("sup-in-text", [...stagedBase, ...methodsRead, line({ type: "assistant", message: { content: [{ type: "text", text: "接下来起 design:supervisor 审一下" }] } })])
+const supRead = transcript("sup-read", [...stagedBase, ...methodsRead, ...read("r7", "supervisor.md", { dir: AGENT_DIR })])
+const skipSup = transcript("skip-sup", [...stagedBase, ...methodsRead, line({ type: "user", message: { role: "user", content: "这页先不用监工，跳过监工" } })])
 const stagedNoLayout = transcript("staged-no-layout", [...skill, ...search(1, 6), ...search(2, 6), stageWrite])
-const skipMockup = transcript("skip-mockup", [...skill, ...layout, ...search(1, 6), ...search(2, 6), line({ type: "user", message: { role: "user", content: "这页很简单，跳过方案图" } })])
+const skipMockup = transcript("skip-mockup", [...skill, ...layout, ...search(1, 6), ...search(2, 6), line({ type: "user", message: { role: "user", content: "这页很简单，跳过方案图" } }), ...work])
 const skipMockupNoLayout = transcript("skip-mockup-no-layout", [...skill, ...search(1, 6), ...search(2, 6), line({ type: "user", message: { role: "user", content: "这页很简单，跳过方案图" } })])
-const skipWire = transcript("skip-wire", [...skill, ...layout, ...search(1, 6), ...search(2, 6), line({ type: "user", message: { role: "user", content: "这页很简单，跳过线框" } })])
+const skipWire = transcript("skip-wire", [...skill, ...layout, ...search(1, 6), ...search(2, 6), line({ type: "user", message: { role: "user", content: "这页很简单，跳过线框" } }), ...work])
 const skipAll = transcript("skip-all", [line({ type: "user", message: { role: "user", content: "就改这一行，跳过先例" } })])
 const searched = [...search(1, 6), ...search(2, 6)]
 const stageshowFlow = transcript("stageshow-flow", [...charter, ...read("r1", "rules.md"), ...read("r2", "SKILL.md", { dir: STAGESHOW }), ...searched])
@@ -201,6 +224,21 @@ const cases = [
   ["HeroUI 项目读了布局手册、做过方案图", 0, writeHero(staged, "orders.tsx", PAGE)],
   ["只用别的库的项目不查", 0, writeHero(none, "orders.tsx", PAGE, plain)],
   ["用户说跳过线框（旧说法）", 0, write(skipWire, "orders.tsx", PAGE)],
+  // 第三道：设计法则 + 监工（用户 11-07）
+  ["真页面没读设计法则", 2, write(noMethods, "orders.tsx", PAGE), "better-layout"],
+  ["真页面只读了 better-layout", 2, write(halfMethods, "orders.tsx", PAGE), "better-writing"],
+  ["真页面没起监工", 2, write(noSup, "orders.tsx", PAGE), "design:supervisor"],
+  ["起监工失败不算", 2, write(supFailed, "orders.tsx", PAGE), "还没起监工"],
+  ["起的是别的子智能体不算", 2, write(otherAgent, "orders.tsx", PAGE), "还没起监工"],
+  ["监工只在正文里提到不算", 2, write(supInText, "orders.tsx", PAGE), "还没起监工"],
+  ["主会话只读监工清单不算", 2, write(supRead, "orders.tsx", PAGE), "还没起监工"],
+  ["子智能体里读完监工清单就放", 0, { ...write(supRead, "orders.tsx", PAGE), agent_id: "a1" }],
+  ["子智能体里没读监工清单", 2, { ...write(noSup, "orders.tsx", PAGE), agent_id: "a1" }, "supervisor.md"],
+  ["HeroUI 项目真页面没起监工", 2, writeHero(noSup, "orders.tsx", PAGE), "design:supervisor"],
+  ["用户说跳过监工", 0, write(skipSup, "orders.tsx", PAGE)],
+  ["跳过监工，设计法则照读", 2, write(transcript("skip-sup-no-methods", [...stagedBase, line({ type: "user", message: { role: "user", content: "跳过监工" } })]), "orders.tsx", PAGE), "better-layout"],
+  ["方案图本身不查监工", 0, writeAt(noSup, join(scene, "hero.tsx"), '<Stage width={1100} height={560}><Row /></Stage>')],
+  ["小改不查监工", 0, editHero(noSup, 'className="mx-auto w-full max-w-xl"', 'className="mx-auto w-full max-w-lg"')],
 ]
 
 try {
@@ -209,6 +247,71 @@ try {
     if (r.status === want && mention && !r.stderr.includes(mention)) console.log(`${name}：拦了，但提示里没提到「${mention}」`)
     if (r.status !== want) console.log(`${name}：退出码 ${r.status}，应为 ${want}${r.status !== 0 && r.status !== 2 ? `（关卡脚本自己出错：${r.stderr.split("\n").find((l) => /Error/.test(l)) ?? r.stderr.slice(0, 120)}）` : ""}`)
   }
+  let stops = 0 // 会话名只用 ASCII：关卡把会话名里的非字母数字换成 _，中文名会撞在一起
+  // 同一会话连写两块：第二块之前要再叫过监工（SendMessage 给它，或再起一个）
+  const run = (payload, gate = GATE) => spawnSync(process.execPath, [gate], { input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, TMPDIR: root } })
+  const seq = (name, steps) => {
+    const session = `seq-${++stops}`
+    steps.forEach(([rows, file, want, mention], i) => {
+      const t = transcript(`${session}-${i}`, rows)
+      const r = run({ ...write(t, file, PAGE), session_id: session })
+      if (r.status !== want) console.log(`${name} 第 ${i + 1} 块：退出码 ${r.status}，应为 ${want}`)
+      else if (mention && !r.stderr.includes(mention)) console.log(`${name} 第 ${i + 1} 块：拦了，但提示里没提到「${mention}」`)
+    })
+  }
+  const first = [...stagedBase, ...work]
+  seq("连写两块", [[first, "orders.tsx", 0], [first, "detail.tsx", 2, "orders.tsx"], [[...first, ...send("g2")], "detail.tsx", 0], [[...first, ...send("g2")], "list.tsx", 2, "detail.tsx"]])
+  seq("SendMessage 给别人不算", [[first, "orders.tsx", 0], [[...first, ...send("g2", "a0ther")], "detail.tsx", 2]])
+  seq("再起一个监工也算", [[first, "orders.tsx", 0], [[...first, ...spawn("g3", { agentId: "a2nd" })], "detail.tsx", 0]])
+
+  // 体验关卡（Stop）：写过真页面、最后一块之后没让体验员走过，拦一次
+  const UX = resolve(process.env.UX_GATE ?? "plugin/hooks/ux-gate.mjs")
+  const uxSpawn = (id) => spawn(id, { type: "design:ux", agentId: "aux1" })
+  const stop = (name, { rows = first, extra = {}, prime = true, want, mention, session = `ux-${++stops}`, times = 1 }) => {
+    if (prime) run({ ...write(transcript(`${session}-w`, first), "orders.tsx", PAGE), session_id: session })
+    const t = transcript(`${session}-s`, rows)
+    let out = ""
+    for (let i = 0; i < times; i++) out = run({ session_id: session, transcript_path: t, cwd: app, hook_event_name: "Stop", stop_hook_active: false, ...extra }, UX).stdout
+    const blocked = out.includes('"decision":"block"')
+    if (blocked !== want) console.log(`体验关卡·${name}：${blocked ? "拦了" : "没拦"}，应为${want ? "拦" : "放"}`)
+    else if (mention && !out.includes(mention)) console.log(`体验关卡·${name}：拦了，但提示里没提到「${mention}」`)
+  }
+  stop("写了真页面没让体验员走", { want: true, mention: "design:ux" })
+  stop("体验员走过了", { rows: [...first, ...uxSpawn("u1")], want: false })
+  stop("体验员只在正文里提到", { rows: [...first, line({ type: "assistant", message: { content: [{ type: "text", text: "接下来起 design:ux" }] } })], want: true })
+  stop("钩子接着跑时不拦", { extra: { stop_hook_active: true }, want: false })
+  stop("同一块只拦一次", { times: 2, want: false })
+  stop("体验员还在后台跑", { extra: { background_tasks: [{ id: "t1", type: "subagent", status: "running", agent_type: "design:ux" }] }, want: false })
+  stop("用户说跳过体验", { rows: [...first, line({ type: "user", message: { role: "user", content: "跳过体验" } })], want: false })
+  stop("没写过真页面不拦", { prime: false, want: false })
+  stop("没有会话记录不拦", { extra: { transcript_path: join(root, "missing.jsonl") }, want: false })
+  // 体验员走在最后一块之前：最后一块之后还要再走
+  {
+    const session = "ux-before-last"
+    run({ ...write(transcript(`${session}-1`, first), "orders.tsx", PAGE), session_id: session })
+    const later = [...first, ...uxSpawn("u1"), ...send("g2")]
+    run({ ...write(transcript(`${session}-2`, later), "detail.tsx", PAGE), session_id: session })
+    const out = run({ session_id: session, transcript_path: transcript(`${session}-s`, later), cwd: app, hook_event_name: "Stop" }, UX).stdout
+    if (!out.includes('"decision":"block"')) console.log("体验关卡·体验员走在最后一块之前：没拦，应为拦")
+  }
+  // Codex：起不了子智能体，读完 agents/ux.md 才放
+  {
+    const session = "ux-codex"
+    const meta = line({ timestamp: "2026-11-07T00:00:00Z", type: "session_meta", payload: { id: session } })
+    const codexFirst = [meta, ...first.filter((l) => !l.includes("design:supervisor") && !l.includes(SUP_ID)), codexRead("supervisor.md", { dir: AGENT_DIR })]
+    const w = run({ ...write(transcript(`${session}-w`, codexFirst), "orders.tsx", PAGE), session_id: session })
+    if (w.status !== 0) console.log(`Codex 读完监工清单写真页面：退出码 ${w.status}，应为 0（${w.stderr.split("\n")[0]}）`)
+    const a = run({ session_id: session, transcript_path: transcript(`${session}-s1`, codexFirst), cwd: app, hook_event_name: "Stop" }, UX).stdout
+    if (!a.includes("ux.md")) console.log("体验关卡·Codex 没读体验清单：没拦或提示里没提到 ux.md")
+    const session2 = "ux-codex-2"
+    run({ ...write(transcript(`${session2}-w`, codexFirst), "orders.tsx", PAGE), session_id: session2 })
+    const b2 = run({ session_id: session2, transcript_path: transcript(`${session2}-s`, [...codexFirst, codexRead("ux.md", { dir: AGENT_DIR })]), cwd: app, hook_event_name: "Stop" }, UX).stdout
+    if (b2.includes('"decision":"block"')) console.log("体验关卡·Codex 读完体验清单：还拦，应为放")
+    const noSupCodex = run({ ...write(transcript("codex-no-sup", [meta, ...stagedBase, ...methodsRead]), "orders.tsx", PAGE), session_id: "codex-no-sup" })
+    if (noSupCodex.status !== 2 || !noSupCodex.stderr.includes("supervisor.md")) console.log(`Codex 没读监工清单：退出码 ${noSupCodex.status}，应为 2 且提到 supervisor.md`)
+  }
+  const broken = spawnSync(process.execPath, [UX], { input: "不是 JSON", encoding: "utf8" })
+  if (broken.status !== 0 || broken.stdout) console.log("体验关卡·输入不是 JSON：应放行")
 } finally {
   rmSync(root, { recursive: true, force: true })
 }

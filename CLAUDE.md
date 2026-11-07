@@ -6,9 +6,10 @@
 
 - `DESIGN.md`：设计总纲（用户 11-07：「他应该是我的设计总纲领，组件是其中的设计工具」）。做页面的智能体和评审的智能体都只读它；改设计标准只改它，带日期原话；超过 30KB 就要拆或删。根目录这份是软链，真文件在 `plugin/skills/design/DESIGN.md`，随插件发出去。
 - `plugin/skills/design/`：唯一的技能，自动判断这次走哪个流程。`references/` 是流程正文：`rules`（所有活共读）、`mockup` → `layout` → `build`（新做、重做）、`polish`、`motion`、`connect`，不抄两份。`assets/heroui-theme.css` 是 HeroUI 的红线覆盖，使用方项目整份拷过去、不手改。`scripts/` 是拍图（`shoot.mjs`）和探针（`probe.mjs`）。`methods/` 是第三方方法原文（来源、版本、许可证见 `methods/UPSTREAM.md`），原文不改、不受 500 行上限约束。
-- `plugin/hooks/`：`session-context`（开场提醒）、`precedent-gate`（写界面文件前：读完总纲、规则和流程，Mobbin ≥ 2 次 ≥ 10 张图；新页面还要读布局手册、做过方案图）、`static-gate`（写完查文案、配色、间距、原生日期框，旧 `@su` 项目再查圆角）；规则本体在 `lib/static-rules.mjs`；配置 `design-hooks.json`，由 `plugin.json` 的 `hooks` 指过去。
-- `evals/`：评测集与盲评记录（第一、二轮在 `2026-11-06-技能盲评/`）。`docs/用户口味/`、`docs/决策日志.md`：原话出处。
-- `scripts/`：钩子的用例审计；`scripts/fixtures/ds-theme.css` 是旧 `@su` 项目的主题样本，给圆角用例用。
+- `plugin/agents/`：两个子智能体（用户 2026-11-07 要的流程）。`supervisor`（监工）写真页面时从头开到尾，每写完一块就审组件选得对不对、有没有拿文字或手画的 div 偷懒、交互做全没有；`ux`（体验员）页面能打开后乱点（`scripts/explore.mjs` 找死点、坏点）、数每件任务几步、能不能更少。都只审不改；Codex 起不了插件子智能体，读这两份文件照着自审。
+- `plugin/hooks/`：`session-context`（开场提醒）、`precedent-gate`（写界面文件前：读完总纲、规则和流程，Mobbin ≥ 2 次 ≥ 10 张图；新页面还要读布局手册、做过方案图，真页面还要读完 better-layout 和 better-writing、起过监工、每块写完再叫它）、`static-gate`（写完查文案（含点分隔、数数句）、配色、间距、原生日期框，旧 `@su` 项目再查圆角）、`ux-gate`（收尾前：写过真页面就要让体验员走过最后一块，同一块只拦一次）；规则本体在 `lib/static-rules.mjs`，会话记录的痕迹（子智能体调用、读全文件、关卡之间的记号）在 `lib/trail.mjs`；配置 `design-hooks.json`，由 `plugin.json` 的 `hooks` 指过去。
+- `evals/`：评测集与盲评记录（怎么评在 `README.md`；第一、二轮在 `2026-11-06-技能盲评/`，第三轮和用户选的参照 w 在 `2026-11-07-第三轮/`）。`docs/用户口味/`、`docs/决策日志.md`：原话出处。
+- `scripts/`：钩子的用例审计（`precedent-gate-audit` 末尾也审 `ux-gate`）；`scripts/fixtures/ds-theme.css` 是旧 `@su` 项目的主题样本，给圆角用例用。
 - `.agents/skills/`、`.claude/skills/`：指向 `methods/` 的软链，在本仓库里能直接调用这些方法。
 
 ## 改了要做的

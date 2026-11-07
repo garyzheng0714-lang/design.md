@@ -1,0 +1,37 @@
+/* 新加进名单的那一行亮一下再回到白底 */
+@keyframes w-flash {
+  from { background-color: var(--color-accent-soft); }
+  to { background-color: var(--color-surface); }
+}
+.w-table .table__row.w-flash > .table__cell {
+  animation: w-flash 1.6s cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes w-flash-item {
+  from { background-color: var(--color-accent-soft); }
+  to { background-color: transparent; }
+}
+.w-flash-item {
+  animation: w-flash-item 1.6s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 原位换字：新字从下面滚上来 */
+@keyframes w-roll {
+  from { transform: translateY(70%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.w-roll {
+  animation: w-roll 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 换成另一个动作的按钮淡入 */
+@keyframes w-pop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.w-pop {
+  animation: w-pop 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .w-roll, .w-pop, .w-table .table__row.w-flash > .table__cell, .w-flash-item { animation: none; }
+}
