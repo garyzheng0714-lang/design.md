@@ -1,5 +1,5 @@
 /*
- * HeroUI 红线覆盖（design 技能的 assets/heroui-theme.css，整份拷进项目，项目里不手改）：组件用 HeroUI v3 原样，这里只改用户明确骂过的几处（用户 2026-11-06：「HeroUI 原样，只改红线」）。
+ * HeroUI 红线覆盖（design.md 仓库根目录的 heroui-theme.css，整份拷进项目，项目里不手改）：组件用 HeroUI v3 原样，这里只改用户明确骂过的几处（用户 2026-11-06：「HeroUI 原样，只改红线」）。
  * 用法：样式入口里依次 @import "tailwindcss"; @import "@heroui/styles"; @import "./heroui-theme.css";（必须在 HeroUI 之后）。
  * 只写进 HeroUI 自己的层（变量在 base、组件在 components），使用方写的 Tailwind 类照样盖得过；颜色、圆角、字体、动效一律不动。
  * 改的四处，依据见设计总纲 DESIGN.md 红线 13 与 §6：
