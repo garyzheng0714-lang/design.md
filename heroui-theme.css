@@ -39,6 +39,13 @@
     padding-block: calc(var(--spacing) * 2 - var(--border-width-field));
   }
 
+  /* 1：输入组的前后缀（密码框的「显示」钮、图标、单位）和输入框之间不画竖线：HeroUI 的这道分隔线用的是框线宽，
+     它默认框线 0、分隔线本来看不见，这里加了框线它才露出来；去掉，回到 HeroUI 原样的一整块 */
+  .input-group__prefix,
+  .input-group__suffix {
+    border-inline-width: 0;
+  }
+
   /* 1：secondary 变体照默认版：白底，悬停、聚焦用控件自己的变量 */
   .input--secondary {
     --input-bg: var(--field-background);
