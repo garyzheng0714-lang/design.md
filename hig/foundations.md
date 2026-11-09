@@ -1,0 +1,43 @@
+# 基础
+
+原文：https://developer.apple.com/cn/design/human-interface-guidelines/foundations
+
+了解基础设计元素如何帮助你打造丰富的使用体验。
+
+- [无障碍](accessibility.md)
+- [App 图标](app-icons.md)
+- [品牌](branding.md)
+- [颜色](color.md)
+- [深色模式](dark-mode.md)
+- [图标](icons.md)
+- [图像](images.md)
+- [沉浸式体验](immersive-experiences.md)
+- [包容性](inclusion.md)
+- [布局](layout.md)
+- [材质](materials.md)
+- [动态效果](motion.md)
+- [隐私](privacy.md)
+- [从右到左](right-to-left.md)
+- [SF 符号](sf-symbols.md)
+- [空间布局](spatial-layout.md)
+- [字体排印](typography.md)
+- [编写](writing.md)
+
+- [无障碍](accessibility.md)
+- [App 图标](app-icons.md)
+- [品牌](branding.md)
+- [颜色](color.md)
+- [深色模式](dark-mode.md)
+- [图标](icons.md)
+- [图像](images.md)
+- [沉浸式体验](immersive-experiences.md)
+- [包容性](inclusion.md)
+- [布局](layout.md)
+- [材质](materials.md)
+- [动态效果](motion.md)
+- [隐私](privacy.md)
+- [从右到左](right-to-left.md)
+- [SF 符号](sf-symbols.md)
+- [空间布局](spatial-layout.md)
+- [字体排印](typography.md)
+- [编写](writing.md)
