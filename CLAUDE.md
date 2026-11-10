@@ -7,10 +7,12 @@
 - 全局的 `~/.claude/CLAUDE.md`（`~/.codex/AGENTS.md` 是它的软链）里有一句「做设计先读 `DESIGN.md`」，所有项目都读这一份，不往项目里拷。
 - `DESIGN.md` 是目录：开头几行说明，标记行以下是设计原则总述和全部章节目录，每章附苹果原文摘要。
 - `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。
+- `heroui/apple.css`：HeroUI 照苹果改的样式（字色对比度、触屏控件尺寸），各项目里的 `heroui-apple.css` 是它的副本。
 
 ## 改了要做的
 
 - 苹果更新了：跑 `python3 -I hig/sync.py`，它重抓 `hig/`、重写 `DESIGN.md` 标记行以下，逐字核对，少一个字就不写；看 `git diff` 确认后提交推送到 main。
+- 改了 `heroui/apple.css` 或 HeroUI 升级：跑 `python3 -I heroui/sync.py`，它核对浅色深色每对字和底色都到 4.5:1，有一对不到就不写；过了把副本写进所有用 HeroUI 的项目。再到各项目构建、提交推送；项目里有别的会话没推送的提交时，不替它推。
 - `hig/` 和 `DESIGN.md` 标记行以下不手改。标记行以上只写怎么用，不写设计规矩。
 - 改完 `npx @google/design.md lint DESIGN.md` 没有 error。
 

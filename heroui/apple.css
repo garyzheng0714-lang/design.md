@@ -1,0 +1,89 @@
+/*
+ * HeroUI v3 照苹果《人机界面指南》改的地方。
+ * 源文件：design.md 仓库 heroui/apple.css。项目里的 heroui-apple.css 是 heroui/sync.py 写的副本，不手改。
+ *
+ * 颜色：《无障碍》要求 17 点及以下的字和底色对比度至少 4.5:1，浅色深色都要达标。
+ *   浅色：蓝、红、绿、橙压暗配白字，悬停再暗一点；灰字压暗。
+ *   深色：蓝、红配深色字，悬停亮一点。
+ * 尺寸：《无障碍》iOS、iPadOS 默认控件 44x44 点、最小 28x28 点；《按钮》按钮点击区域至少 44x44 点。
+ *   触屏上默认和大号的按钮、输入框、下拉、菜单项至少 44 高；小号不动（不低于 28）。
+ */
+
+@layer base {
+  :root,
+  .light,
+  .default,
+  [data-theme="light"],
+  [data-theme="default"],
+  :host(.light),
+  :host(.default),
+  :host([data-theme="light"]),
+  :host([data-theme="default"]) {
+    --accent: oklch(0.545 0.172 253.83);
+    --accent-foreground: var(--snow);
+    --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--black) 10%);
+
+    --danger: oklch(0.57 0.231 25.74);
+    --danger-foreground: var(--snow);
+    --danger-hover: color-mix(in oklab, var(--danger) 90%, var(--black) 10%);
+
+    --success: oklch(0.525 0.141 150.81);
+    --success-foreground: var(--snow);
+    --success-hover: color-mix(in oklab, var(--success) 90%, var(--black) 10%);
+
+    --warning: oklch(0.545 0.115 72.33);
+    --warning-foreground: var(--snow);
+    --warning-hover: color-mix(in oklab, var(--warning) 90%, var(--black) 10%);
+
+    --muted: oklch(0.52 0.0138 285.94);
+  }
+
+  .dark,
+  [data-theme="dark"],
+  :host(.dark),
+  :host([data-theme="dark"]) {
+    --accent: oklch(0.6204 0.195 253.83);
+    --accent-foreground: var(--eclipse);
+    --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--white) 10%);
+
+    --danger: oklch(0.63 0.1967 24.63);
+    --danger-foreground: var(--eclipse);
+    --danger-hover: color-mix(in oklab, var(--danger) 90%, var(--white) 10%);
+
+    --success: oklch(0.7329 0.1935 150.81);
+    --success-foreground: var(--eclipse);
+    --success-hover: color-mix(in oklab, var(--success) 90%, var(--success-foreground) 10%);
+
+    --warning: oklch(0.8203 0.1388 76.34);
+    --warning-foreground: var(--eclipse);
+    --warning-hover: color-mix(in oklab, var(--warning) 90%, var(--warning-foreground) 10%);
+
+    --muted: oklch(70.5% 0.015 286.067);
+  }
+}
+
+@layer components {
+  @media (pointer: coarse) {
+    .button:not(.button--sm),
+    .toggle-button:not(.toggle-button--sm),
+    .input,
+    .input-group,
+    .select__trigger,
+    .autocomplete__trigger,
+    .search-field__group,
+    .number-field__group,
+    .date-input-group,
+    .color-input-group,
+    .menu-item,
+    .list-box-item,
+    .pagination__link {
+      min-height: 2.75rem;
+    }
+
+    .button--icon-only:not(.button--sm),
+    .toggle-button--icon-only:not(.toggle-button--sm),
+    .pagination__link {
+      min-width: 2.75rem;
+    }
+  }
+}
