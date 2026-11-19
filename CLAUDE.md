@@ -7,6 +7,7 @@
 - 全局的 `~/.claude/CLAUDE.md`（`~/.codex/AGENTS.md` 是它的软链）里有一句「做设计先读 `DESIGN.md`」，所有项目都读这一份，不往项目里拷。
 - `DESIGN.md` 由人写：五步流程，每步只写边界和用什么工具，不写怎么做。
 - `文字排版.md`：文字的边界（字号、字重、颜色层数、行高、数字、中英文），总纲第 2 步链过去。起因是用户 2026-11-19 说「所有设计的共性问题就是文字的处理及其差劲」「应当参考业内的设计规范…站在巨人的肩膀上」；出处和实测数据在 `docs/文字排版调研.md`，自查脚本 `tools/text-styles.js`（在浏览器里数一屏用了几种字号、字重、颜色）。
+- `验收.md`：从动手到交付的检查，总纲第 3、4、5 步链过去。起因是用户 2026-11-19 指出检查流程有大问题（回弹、手排的日志、堆字的数据都是用户自己用出来的），并要求「根据人家的区块来做设计」「每一次检查都要问自己是否有更合适的组件」。自查脚本 `tools/page-check.js` 查回弹、横向溢出、「·」、固定表头被盖、字体；用户再发现能让机器判断的问题，就加进这个脚本，测试题 `evals/` 也加一条。
 - `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。是八条原则的出处，备查，不是规矩。
 - 用到的工具：Mobbin 是本机插件 `~/plugins/mobbin`（用户自己的 Mobbin API 密钥），没有按组件筛选的开关，靠搜的那句话只描述组件或布局、不提行业（2026-11-19 实测「月历格子」搜出 8 个行业的日历；插件技能已照此改）；beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
 
