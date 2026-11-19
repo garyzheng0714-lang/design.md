@@ -1,13 +1,13 @@
 # design.md · 仓库规则
 
-设计总纲 `DESIGN.md`：只划边界、指方向，尽量短（用户 2026-11-19：「按照给边界不给细节来做…把人机界面指南这些化为原则。极大可能的提高信息密度，最好100个字内描述清楚」「design.md主要是划定边界和指明方向」）。流程是用户定的五步：「1. 定方向，找灵感（mobbin）2. 根据设计原则和规范开始设计，组件和样式，布局，都应该先参考beui的组件库，用现成的布局和样式。一定要挑到最适合的。3. 调整细节 4. 独立的智能体根据审核技能来进行审核。5. 交付设计内容和审核过程」，又补充：「必要的UX设计是需要的，每个功能，按钮，步骤都要点击，自己测试。布局也要考虑到长文本的处理，手机端东西显示等。交互一定是参考苹果这边的，他们的交互是非常丝滑的，动画库可以参考gsap找到最适合的」。仓库私密。
+设计总纲 `DESIGN.md`：只划边界、指方向，尽量短（用户 2026-11-19：「按照给边界不给细节来做…把人机界面指南这些化为原则。极大可能的提高信息密度，最好100个字内描述清楚」「design.md主要是划定边界和指明方向」）。流程是用户定的五步：「1. 定方向，找灵感（mobbin）2. 根据设计原则和规范开始设计，组件和样式，布局，都应该先参考beui的组件库，用现成的布局和样式。一定要挑到最适合的。3. 调整细节 4. 独立的智能体根据审核技能来进行审核。5. 交付设计内容和审核过程」，又补充：「必要的UX设计是需要的，每个功能，按钮，步骤都要点击，自己测试。布局也要考虑到长文本的处理，手机端东西显示等。交互一定是参考苹果这边的，他们的交互是非常丝滑的，动画库可以参考gsap找到最适合的」；Mobbin 要按组件和布局找，不按项目找（「很多好设计是夸行业甚至跨项目的，我需要按照组件和布局来找…比如我要做一个日历，那应该找很多日历组件来做这件事」）；还要经得起时间（「我更喜欢那些经得起时间考验的设计。就是我可能5年后回来看，这个设计仍旧不会过时」）。仓库私密。
 
 ## 怎么用
 
 - 全局的 `~/.claude/CLAUDE.md`（`~/.codex/AGENTS.md` 是它的软链）里有一句「做设计先读 `DESIGN.md`」，所有项目都读这一份，不往项目里拷。
 - `DESIGN.md` 由人写：五步流程，每步只写边界和用什么工具，不写怎么做。
 - `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。是八条原则的出处，备查，不是规矩。
-- 用到的工具：Mobbin 是本机插件 `~/plugins/mobbin`（用户自己的 Mobbin API 密钥）；beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
+- 用到的工具：Mobbin 是本机插件 `~/plugins/mobbin`（用户自己的 Mobbin API 密钥），没有按组件筛选的开关，靠搜的那句话只描述组件或布局、不提行业（2026-11-19 实测「月历格子」搜出 8 个行业的日历；插件技能已照此改）；beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
 
 ## 改了要做的
 
