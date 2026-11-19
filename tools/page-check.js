@@ -51,6 +51,34 @@
     const firsts = new Set(all.filter(el => el.childNodes.length && [...el.childNodes].some(c => c.nodeType === 3 && c.textContent.trim())).map(el => css(el).fontFamily.split(',')[0].trim().replace(/"/g, '')));
     const system = [...firsts].filter(f => /^(-apple-system|system-ui|BlinkMacSystemFont|PingFang|Microsoft YaHei|sans-serif|serif)/i.test(f));
     out.push(system.length ? `✗ 字体：${system.join('、')} 打头` : `✓ 字体：打头的是 ${[...firsts].join('、')}`);
+
+    // 6. 悬停底色要跟手：要一行行扫的列表（6 行以上），鼠标换到下一行，底色马上在那一行。
+    // 滑过去的底色停在半路，看着就是错位。导航这种几项的入口可以滑，不查。
+    // 只能查脚本画出来的底色（不接鼠标、有底色的那层）；CSS :hover 脚本触发不了，要人眼看。
+    const hit = el => (el.matches('li') ? el.querySelector('a[href], button') : el);
+    const lists = [...new Set([...doc.querySelectorAll('button, a[href], li')].map(el => el.parentElement))]
+      .map(p => [...p.children].filter(c => c.matches('button, a[href], li') && hit(c)))
+      .filter(items => items.length >= 6);
+    const lag = [];
+    for (const items of lists) {
+      const [a, b] = items.map(hit);
+      const box = items[0].parentElement;
+      a.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true, relatedTarget: doc.body }));
+      await new Promise(r => setTimeout(r, 500));
+      // React 从 mouseout 算「离开 a、进入 b」，所以两个事件都发。
+      a.dispatchEvent(new win.MouseEvent('mouseout', { bubbles: true, relatedTarget: b }));
+      b.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true, relatedTarget: a }));
+      await frame();
+      const top = items[1].getBoundingClientRect().top;
+      const marks = [...box.querySelectorAll('*')].filter(el => {
+        const s = css(el), r = el.getBoundingClientRect();
+        return s.pointerEvents === 'none' && r.height > 8 && Number(s.opacity) > 0.1 && s.backgroundColor !== 'rgba(0, 0, 0, 0)';
+      });
+      const off = Math.max(0, ...marks.map(m => Math.round(Math.abs(m.getBoundingClientRect().top - top))));
+      if (off > 2) lag.push(`${name(box)} 慢了 ${off}px`);
+      b.dispatchEvent(new win.MouseEvent('mouseout', { bubbles: true, relatedTarget: doc.body }));
+    }
+    out.push(lag.length ? `✗ 悬停底色跟不上鼠标（会滑的底色）：${lag.slice(0, 3).join('；')}` : `✓ 悬停底色：${lists.length} 组列表没有会滑的底色（CSS 悬停要人眼看）`);
   }
   return out.join('\n');
 })();
