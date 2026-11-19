@@ -1,20 +1,23 @@
 # design.md · 仓库规则
 
-设计总纲 `DESIGN.md`：设计观、设计原则、布局和整体以苹果《人机界面指南》原文为准，一字不落，严格执行；组件样式以 beUI 原样为准。仓库私密。
+设计总纲 `DESIGN.md`：只划边界、指方向，尽量短（用户 2026-11-19：「按照给边界不给细节来做…把人机界面指南这些化为原则。极大可能的提高信息密度，最好100个字内描述清楚」「design.md主要是划定边界和指明方向」）。流程是用户定的五步：「1. 定方向，找灵感（mobbin）2. 根据设计原则和规范开始设计，组件和样式，布局，都应该先参考beui的组件库，用现成的布局和样式。一定要挑到最适合的。3. 调整细节 4. 独立的智能体根据审核技能来进行审核。5. 交付设计内容和审核过程」，又补充：「必要的UX设计是需要的，每个功能，按钮，步骤都要点击，自己测试。布局也要考虑到长文本的处理，手机端东西显示等。交互一定是参考苹果这边的，他们的交互是非常丝滑的，动画库可以参考gsap找到最适合的」。仓库私密。
 
 ## 怎么用
 
 - 全局的 `~/.claude/CLAUDE.md`（`~/.codex/AGENTS.md` 是它的软链）里有一句「做设计先读 `DESIGN.md`」，所有项目都读这一份，不往项目里拷。
-- `DESIGN.md` 是目录：开头几行说明，标记行以下是设计原则总述和全部章节目录，每章附苹果原文摘要。
-- `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。
+- `DESIGN.md` 由人写：五步流程，每步只写边界和用什么工具，不写怎么做。
+- `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。是八条原则的出处，备查，不是规矩。
+- 用到的工具：Mobbin 是本机插件 `~/plugins/mobbin`（用户自己的 Mobbin API 密钥）；beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
 
 ## 改了要做的
 
-- 苹果更新了：跑 `python3 -I hig/sync.py`，它重抓 `hig/`、重写 `DESIGN.md` 标记行以下，逐字核对，少一个字就不写；看 `git diff` 确认后提交推送到 main。
-- `hig/` 和 `DESIGN.md` 标记行以下不手改。标记行以上只写怎么用，不写设计规矩。
+- 苹果更新了：跑 `python3 -I hig/sync.py`，它只重抓 `hig/`，逐字核对，少一个字就不写；设计原则变了再改 `DESIGN.md` 的方向那行。看 `git diff` 确认后提交推送到 main。
+- `hig/` 不手改。`DESIGN.md` 改完还是一屏看完，加一句先删一句。
 - 改完 `npx @google/design.md lint DESIGN.md` 没有 error。
 
 ## 定了不做的事
+
+- 2026-11-19：总纲不再照抄苹果原文、不列章节目录，只划边界、指方向（用户原话见开头）。下面 11-10「一个不留，全照苹果原文」那条就此作废；原文还在 `hig/`，旧版总纲在 git 历史里（最后一版 `a53af0c`）。
 
 - 2026-11-18：不再用 HeroUI，网页组件换成 beUI（用户：「不再用HeroUI了，我换成beui了」）。下面 11-10 那条「不改组件库样式」照旧，只是组件库换成 beUI。
 - 2026-11-10：不照苹果改 HeroUI 组件样式（圆角、颜色、尺寸都以 HeroUI 为准），总纲和组件库互相独立（用户：「组件，例如圆角啊，样式啊，还是以 HeroUI 为准」「否则做出来的东西就太过于苹果风了，我仍旧希望保留原本组件库的质感」）。改过的 `heroui/apple.css`、`heroui/sync.py` 和各项目的 `heroui-apple.css` 已撤掉，在 git 历史里（最后一版 `d06b0d0`）。

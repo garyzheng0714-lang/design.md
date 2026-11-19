@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""把苹果《人机界面指南》整套原文抓成 Markdown：中文（苹果官方译文）写到 hig/，英文写到 hig/en/，
-再把 DESIGN.md 标记行以下重写成：设计原则总述 + 全部章节目录（每章附苹果原文摘要）。
+"""把苹果《人机界面指南》整套原文抓成 Markdown：中文（苹果官方译文）写到 hig/，英文写到 hig/en/。
+这是 DESIGN.md 里八条设计原则的出处，备查；DESIGN.md 本身由人写，这个脚本不碰它。
 
 用法：python3 -I hig/sync.py
 - 从目录页顺着往下抓全部章节，一章一个文件，文件名用苹果网址里的那一段（layout.md、buttons.md）。
 - 逐字核对：苹果数据里的每一段字都必须出现在生成的文件里，少一个字就报错退出，不写半成品。
-- 苹果删掉的章，本地对应文件一起删；中文版更新日期落后于英文的章，在目录里标出来、指向英文。
+- 苹果删掉的章，本地对应文件一起删；中文版更新日期落后于英文的章，跑完列出来，那几章以英文为准。
 
 为什么不直接上网页：developer.apple.com 的 HIG 页面是脚本渲染的，普通抓取只拿到空壳；
 页面背后的数据在 /tutorials/data/{cn/}design/human-interface-guidelines/<章>.json。
@@ -26,8 +26,6 @@ ASSETS = "https://developer.apple.com/tutorials"
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = {"cn": HERE, "en": os.path.join(HERE, "en")}
 CJK_PUNCT = "。，、；：！？）」』"
-DESIGN = os.path.join(os.path.dirname(HERE), "DESIGN.md")
-MARKER = "<!-- 下面由 hig/sync.py 从苹果原文生成，不手改 -->"
 
 
 def fetch(lang, path):
@@ -311,69 +309,9 @@ def main():
             path = os.path.join(OUT[lang], name)
             if name.endswith(".md") and path not in keep:
                 os.remove(path)
-    write_design(tree, docs, lag)
+    for slug, title, dcn, den in lag:
+        print(f"中文落后：{title}（hig/{slug}.md），中文{'没有更改日志' if not dcn else f'停在 {dcn}'}，英文 {den} 更新过，以 hig/en/{slug}.md 为准")
     print(f"写好 {len(pages) // 2} 章（中英各一份），逐字核对通过；中文落后英文 {len(lag)} 章。")
-
-
-def write_design(tree, docs, lag):
-    """DESIGN.md 标记行以上是人写的说明，以下全是苹果原文：设计原则的总述，加上全部章节的目录。"""
-    with open(DESIGN, encoding="utf-8") as f:
-        head = f.read()
-    if MARKER not in head:
-        sys.exit(f"DESIGN.md 里找不到标记行：{MARKER}")
-    head = head[:head.index(MARKER) + len(MARKER)]
-    lagging = {s: (c, e) for s, _, c, e in lag}
-    principles = ROOT + "/design-principles"
-
-    # 设计原则：苹果原文开头到第一个二级标题之前（总述和八条），图标不要
-    doc = docs[principles][0]
-    r = Renderer(doc, "cn", "hig/")
-    blocks = []
-    for sec in doc.get("primaryContentSections", []):
-        for b in sec.get("content", []):
-            if b.get("type") == "heading" and b["level"] <= 2:
-                break
-            blocks.append(b)
-        break
-    overview = re.sub(r"!\[[^\]]*\]\([^)]*\)\n?", "", r.blocks(blocks))
-    overview = re.sub(r"^### ", "#### ", overview, flags=re.M)
-    overview = re.sub(r"\n{3,}", "\n\n", overview).strip()
-
-    def title(p):
-        return docs[p][0]["metadata"].get("title", slug_of(p))
-
-    def abstract(p):
-        return Renderer(docs[p][0], "cn", "hig/").inl(docs[p][0].get("abstract")).strip()
-
-    def entry(p):
-        s = slug_of(p)
-        line = f"[{title(p)}](hig/{s}.md)"
-        if abstract(p):
-            line += "：" + abstract(p)
-        if s in lagging:
-            c, e = lagging[s]
-            line += f"（中文版{'没有更改日志' if not c else f'停在 {c}'}，英文 {e} 更新过，以[英文](hig/en/{s}.md)为准）"
-        return line
-
-    out = ["", "", "## 设计原则", "", overview, "", f"全文：[设计原则](hig/design-principles.md)", "", "## 目录"]
-
-    def walk(p, depth):
-        for c in tree.get(p, []):
-            if depth == 0:
-                out.extend(["", f"### [{title(c)}](hig/{slug_of(c)}.md)", ""] + ([abstract(c), ""] if abstract(c) else []))
-            else:
-                out.append("  " * (depth - 1) + "- " + entry(c))
-            walk(c, depth + 1)
-
-    walk(ROOT, 0)
-    body = "\n".join(out) + "\n"
-    flat = norm(body)
-    missing = [t for t in texts({"abstract": [], "primaryContentSections": [{"content": blocks}]}) if t.strip() and norm(t) not in flat]
-    missing += [title(p) for p in docs if p != ROOT and abstract(p) and norm(abstract(p)) not in flat]
-    if missing:
-        sys.exit(f"DESIGN.md 目录核对没过：{missing[:5]}")
-    with open(DESIGN, "w", encoding="utf-8") as f:
-        f.write(head + body)
 
 
 if __name__ == "__main__":
