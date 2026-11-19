@@ -6,6 +6,7 @@
 
 - 全局的 `~/.claude/CLAUDE.md`（`~/.codex/AGENTS.md` 是它的软链）里有一句「做设计先读 `DESIGN.md`」，所有项目都读这一份，不往项目里拷。
 - `DESIGN.md` 由人写：五步流程，每步只写边界和用什么工具，不写怎么做。
+- `文字排版.md`：文字的边界（字号、字重、颜色层数、行高、数字、中英文），总纲第 2 步链过去。起因是用户 2026-11-19 说「所有设计的共性问题就是文字的处理及其差劲」「应当参考业内的设计规范…站在巨人的肩膀上」；出处和实测数据在 `docs/文字排版调研.md`，自查脚本 `tools/text-styles.js`（在浏览器里数一屏用了几种字号、字重、颜色）。
 - `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。是八条原则的出处，备查，不是规矩。
 - 用到的工具：Mobbin 是本机插件 `~/plugins/mobbin`（用户自己的 Mobbin API 密钥），没有按组件筛选的开关，靠搜的那句话只描述组件或布局、不提行业（2026-11-19 实测「月历格子」搜出 8 个行业的日历；插件技能已照此改）；beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
 
@@ -17,6 +18,7 @@
 
 ## 定了不做的事
 
+- 2026-11-19：总纲不加这几句：「设计尽量少，产品是工具不是装饰」「只在一处用力，其余克制」「方向是苹果备忘录、Linear 官网那样的干净克制」「先写一页计划」，以及动效、键盘、44px 点按区的细则。三道题盲评，用户每题都选了没加这些的现行版，加了的两版评语是「看着就不舒服」「丑哭」。测试题在 `evals/`。
 - 2026-11-19：总纲不再照抄苹果原文、不列章节目录，只划边界、指方向（用户原话见开头）。下面 11-10「一个不留，全照苹果原文」那条就此作废；原文还在 `hig/`，旧版总纲在 git 历史里（最后一版 `a53af0c`）。
 
 - 2026-11-18：不再用 HeroUI，网页组件换成 beUI（用户：「不再用HeroUI了，我换成beui了」）。下面 11-10 那条「不改组件库样式」照旧，只是组件库换成 beUI。

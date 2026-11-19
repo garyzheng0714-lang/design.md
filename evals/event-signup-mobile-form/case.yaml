@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: event-signup-mobile-form
+expected_outcome: |
+  一个以手机（390px 宽）为主的报名页：活动信息清楚，表单好填，手机号填错或必填项漏填时就地说清怎么改，至少选一天，提交后显示报名成功；点按区够大，不出现横向滚动，电脑宽度下也不难看。组件来自 beUI 原样，自己加的图标来自 IconMCP，设计说明写清参考和自测过程。

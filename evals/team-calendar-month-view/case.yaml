@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: team-calendar-month-view
+expected_outcome: |
+  一个能用的月历页面：一眼看出哪天有活动，点某天看当天详情，能新建活动并马上出现在日历上；活动标题很长、某天活动很多、某月没有活动都排得下；手机宽度（390px）下也能看、能点、能新建。组件来自 beUI 原样，自己加的图标来自 IconMCP，设计说明写清参考了哪些 Mobbin 页面和自测过程。
