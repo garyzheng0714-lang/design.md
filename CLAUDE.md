@@ -4,12 +4,13 @@
 
 ## 怎么用
 
-- 全局的 `~/.claude/CLAUDE.md`（`~/.codex/AGENTS.md` 是它的软链）里有一句「做设计先读 `DESIGN.md`」，所有项目都读这一份，不往项目里拷。
+- 全局的 `~/.claude/CLAUDE.md`（`~/.codex/AGENTS.md` 是它的软链）用 `@` 引用 `DESIGN.md`，Claude Code 每次对话自动带上，Codex 照那句的路径去读；所有项目都用这一份，不往项目里拷。用户 2026-11-20：「只有一个design.md，我不应该主动来唤醒你用哪个来设计，你应该就是根据我的对话自然就调用这些工具」。
 - `DESIGN.md` 由人写：四步流程，每步只写边界和用什么工具，不写怎么做。
 - `文字排版.md`：文字的边界（字号、字重、颜色层数、行高、数字、中英文），总纲第 1 步链过去。起因是用户 2026-11-19 说「所有设计的共性问题就是文字的处理及其差劲」「应当参考业内的设计规范…站在巨人的肩膀上」；出处和实测数据在 `docs/文字排版调研.md`，自查脚本 `tools/text-styles.js`（在浏览器里数一屏用了几种字号、字重、颜色）。
 - `验收.md`：从动手到交付的检查，总纲第 2、3、4 步链过去。起因是用户 2026-11-19 指出检查流程有大问题（回弹、手排的日志、堆字的数据都是用户自己用出来的），并要求「根据人家的区块来做设计」「每一次检查都要问自己是否有更合适的组件」。自查脚本 `tools/page-check.js` 查回弹、横向溢出、「·」、固定表头被盖、字体；用户再发现能让机器判断的问题，就加进这个脚本，测试题 `evals/` 也加一条。
 - `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。是八条原则的出处，备查，不是规矩。
-- 用到的工具：make-interfaces-feel-better（github.com/jakubkrehel/make-interfaces-feel-better，MIT）是总纲第 2 步打磨细节用的技能，装法 `npx skills add jakubkrehel/make-interfaces-feel-better -g -y -a claude-code -a codex`；apple-design（github.com/emilkowalski/skills，MIT）是第 1 步定交互和样子用的技能，它引用的 animation-performance 一起装，装法 `npx skills add emilkowalski/skills -s apple-design animation-performance -g -y -a claude-code -a codex`；更新用 `npx skills update -g`。三轮技能比拼（2026-11-19 点对点工具，11-20 客户线索两轮）make-interfaces-feel-better 都是用户最满意的（「把这个作为我们的skill吧」）；第三轮拿它和 4 个技能单用、叠加对比，用户选了两个叠加：「apple-design + make-interfaces-feel-better 这个确实最舒服，就这个吧。」比拼材料在用户桌面「设计技能比拼-客户线索-第三轮-20261120」。两个技能都不改 beUI 组件本身（见下面 11-10 那条）；beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
+- `skills/feel-good-ui/`：总纲第 1、2 步用的技能，我们自己的，用户 2026-11-20 起的名。里面是 Emil Kowalski 的 apple-design（加它引用的 animation-performance）和 Jakub Krehel 的 make-interfaces-feel-better 两份原文（MIT），外面一层 `SKILL.md` 是我们写的。`~/.claude/skills/feel-good-ui` 和 `~/.agents/skills/feel-good-ui`（Codex 读这里）都软链到这个文件夹，不另装第三方原版。上游更新跑 `tools/sync-feel-good-ui.sh`。来历：三轮技能比拼（2026-11-19 点对点工具，11-20 客户线索两轮）make-interfaces-feel-better 都是用户最满意的；第三轮拿它和 4 个技能单用、叠加对比，用户选了 apple-design 叠加它：「这个确实最舒服，就这个吧。」比拼材料在用户桌面「设计技能比拼-客户线索-第三轮-20261120」。
+- 用到的工具：beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
 
 ## 改了要做的
 
@@ -18,6 +19,8 @@
 - 改完 `npx @google/design.md lint DESIGN.md` 没有 error。
 
 ## 定了不做的事
+
+- 2026-11-20：技能不用第三方原名（apple-design 之类），不让用户点名唤起技能。挑中的技能并进我们自己的 feel-good-ui，总纲经全局 CLAUDE.md 引用自动加载（用户：「这个技能不应该叫做什么apple-design，你在搞什么」）。
 
 - 2026-11-20：总纲不再有「找方向」这一步，也不用 Mobbin 找参考（用户：「先从产品领域里找方向，这种可以去掉」「不需要他们找方向了」「mobbin mcp从我的design.md里彻底去掉」）。测试题里查 Mobbin 引用的那条也删了。
 - 2026-11-19：总纲不加这几句：「设计尽量少，产品是工具不是装饰」「只在一处用力，其余克制」「方向是苹果备忘录、Linear 官网那样的干净克制」「先写一页计划」，以及动效、键盘、44px 点按区的细则。三道题盲评，用户每题都选了没加这些的现行版，加了的两版评语是「看着就不舒服」「丑哭」。测试题在 `evals/`。
