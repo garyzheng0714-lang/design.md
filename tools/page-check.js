@@ -107,6 +107,13 @@
         const ar = a.getBoundingClientRect(), m = parseFloat(css(a).overflowClipMargin) || 0;
         if (r.top - g < ar.top - m - 0.5 || r.bottom + g > ar.bottom + m + 0.5 || r.left - g < ar.left - m - 0.5 || r.right + g > ar.right + m + 0.5) { cut.push(`${name(el)} 被 ${name(a)} 裁掉`); break; }
       }
+      // Mac 默认的滚动条浮在内容上，鼠标靠近会变宽到约 15px，盖住贴边的外圈；脚本看不见它，只能量留白
+      for (let a = el.parentElement; a && a !== doc.body; a = a.parentElement) {
+        if (!/(auto|scroll)/.test(css(a).overflowY) || a.scrollHeight <= a.clientHeight + 1) continue;
+        const room = a.getBoundingClientRect().right - (a.offsetWidth - a.clientWidth) - (r.right + g);
+        if (a.offsetWidth === a.clientWidth && room < 16) cut.push(`${name(el)} 离滚动区右边只有 ${Math.round(room)}px，浮动滚动条会盖住`);
+        break;
+      }
       for (const [a, t, l] of keep) { a.scrollTop = t; a.scrollLeft = l; }
     }
     out.push(cut.length ? `✗ 选中描边被盖或被裁：${[...new Set(cut)].slice(0, 3).join('；')}` : `✓ 选中描边：${marked.length} 个选中、正在看的项整圈都看得见`);
