@@ -82,7 +82,8 @@
 
     // 7. 选中、正在看、当前页的那一项，描边和外圈要整圈看得见：贴边的栏头、相邻的块、父级裁切都可能盖掉一条边。
     const cut = [];
-    const marked = all.filter(el => el.matches('[data-selected],[aria-pressed="true"],[aria-current]:not([aria-current="false"]),[aria-selected="true"]'));
+    // 收起的下拉里也有「选中」的选项，看不见的不算
+    const marked = all.filter(el => el.matches('[data-selected],[aria-pressed="true"],[aria-current]:not([aria-current="false"]),[aria-selected="true"]') && el.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
     // 每个都先像键盘移过去那样滚进视野（nearest），再看四条边；查完滚回原处
     const scrolled = el => { const keep = []; for (let a = el.parentElement; a; a = a.parentElement) keep.push([a, a.scrollTop, a.scrollLeft]); return keep; };
     for (const el of marked) {
