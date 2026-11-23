@@ -79,6 +79,37 @@
       b.dispatchEvent(new win.MouseEvent('mouseout', { bubbles: true, relatedTarget: doc.body }));
     }
     out.push(lag.length ? `✗ 悬停底色跟不上鼠标（会滑的底色）：${lag.slice(0, 3).join('；')}` : `✓ 悬停底色：${lists.length} 组列表没有会滑的底色（CSS 悬停要人眼看）`);
+
+    // 7. 选中、正在看、当前页的那一项，描边和外圈要整圈看得见：贴边的栏头、相邻的块、父级裁切都可能盖掉一条边。
+    const cut = [];
+    const marked = all.filter(el => el.matches('[data-selected],[aria-pressed="true"],[aria-current]:not([aria-current="false"]),[aria-selected="true"]'));
+    // 每个都先像键盘移过去那样滚进视野（nearest），再看四条边；查完滚回原处
+    const scrolled = el => { const keep = []; for (let a = el.parentElement; a; a = a.parentElement) keep.push([a, a.scrollTop, a.scrollLeft]); return keep; };
+    for (const el of marked) {
+      const keep = scrolled(el);
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      await frame();
+      const r = el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) { for (const [a, t, l] of keep) { a.scrollTop = t; a.scrollLeft = l; } continue; }
+      // 外圈有多宽：box-shadow 的扩展半径、outline 的宽加偏移，取最大；没有外圈就查描边本身
+      const spreads = [...css(el).boxShadow.matchAll(/0px 0px 0px (\d+(?:\.\d+)?)px(?! inset)/g)].map(x => +x[1]);
+      if (css(el).outlineStyle !== 'none') spreads.push(parseFloat(css(el).outlineWidth) + parseFloat(css(el).outlineOffset));
+      const g = Math.max(0, ...spreads), d = g ? -(g - 0.5) : 0.5;
+      const pts = [[r.left + r.width / 2, r.top + d], [r.left + r.width / 2, r.bottom - d], [r.left + d, r.top + r.height / 2], [r.right - d, r.top + r.height / 2]];
+      for (const [x, y] of pts) {
+        if (y < 0 || y > win.innerHeight || x < 0 || x > win.innerWidth) continue;
+        const hit = doc.elementFromPoint(x, y);
+        if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)) { cut.push(`${name(el)} 被 ${name(hit)} 盖住`); break; }
+      }
+      for (let a = el.parentElement; a && a !== doc.body; a = a.parentElement) {
+        const o = css(a).overflowX + css(a).overflowY;
+        if (!/(hidden|clip|auto|scroll)/.test(o)) continue;
+        const ar = a.getBoundingClientRect(), m = parseFloat(css(a).overflowClipMargin) || 0;
+        if (r.top - g < ar.top - m - 0.5 || r.bottom + g > ar.bottom + m + 0.5 || r.left - g < ar.left - m - 0.5 || r.right + g > ar.right + m + 0.5) { cut.push(`${name(el)} 被 ${name(a)} 裁掉`); break; }
+      }
+      for (const [a, t, l] of keep) { a.scrollTop = t; a.scrollLeft = l; }
+    }
+    out.push(cut.length ? `✗ 选中描边被盖或被裁：${[...new Set(cut)].slice(0, 3).join('；')}` : `✓ 选中描边：${marked.length} 个选中、正在看的项整圈都看得见`);
   }
   return out.join('\n');
 })();
