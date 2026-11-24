@@ -13,10 +13,18 @@
     out.push(`—— ${where}（${doc.documentElement.clientWidth}×${doc.documentElement.clientHeight}）`);
     const all = [...doc.querySelectorAll('*')];
     const scrollers = all.filter(el => /(auto|scroll)/.test(css(el).overflowY + css(el).overflowX) && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1));
+    // 弹层（Fluid 的搜索面板、下拉、选择框）里的滚动区是组件自己的，组件原样不改；2026-11-24 对过 Fluid 官网 CommandMenu：视口 overscroll auto、行底色伸进轨道 6px、行尾的字离边 12px，和资讯订阅一模一样
+    const POPUP = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
+    const inPopup = el => !!el.closest(POPUP);
+    // 开着模态框时，后面的页面被遮罩盖住是设计如此，只查框里的
+    const modal = [...doc.querySelectorAll('[role="dialog"], [role="alertdialog"]')].find(d => d.getAttribute('aria-modal') === 'true' || doc.querySelector('[data-base-ui-inert], [data-slot$="overlay"], [data-slot$="backdrop"]'));
 
     // 1. 到头回弹、带着整页晃：contain 只挡住连带滚动，回弹还在，要 none。
-    const bounce = [doc.documentElement, doc.body, ...scrollers].filter(el => css(el).overscrollBehaviorY !== 'none' || css(el).overscrollBehaviorX !== 'none');
-    out.push(bounce.length ? `✗ 回弹：${bounce.length} 处不是 overscroll-behavior: none：${bounce.slice(0, 5).map(el => `${name(el)}（${css(el).overscrollBehaviorY}）`).join('，')}` : `✓ 回弹：html、body 和 ${scrollers.length} 个滚动区都是 none（触控板手感没实测）`);
+    const bouncy = el => css(el).overscrollBehaviorY !== 'none' || css(el).overscrollBehaviorX !== 'none';
+    const bounce = [doc.documentElement, doc.body, ...scrollers.filter(el => !inPopup(el))].filter(bouncy);
+    const popupLoose = scrollers.filter(el => inPopup(el) && bouncy(el)).length;
+    const popupNote = popupLoose ? `；另有 ${popupLoose} 个在 Fluid 弹层里，照组件原样 auto，不算` : '';
+    out.push(bounce.length ? `✗ 回弹：${bounce.length} 处不是 overscroll-behavior: none：${bounce.slice(0, 5).map(el => `${name(el)}（${css(el).overscrollBehaviorY}）`).join('，')}${popupNote}` : `✓ 回弹：html、body 和页面里的滚动区都是 none（触控板手感没实测）${popupNote}`);
 
     // 2. 横向溢出：整页不该横向滚；滚动区里的横向滚动列出来自己判断。
     const pageWide = doc.documentElement.scrollWidth > doc.documentElement.clientWidth + 1;
@@ -26,7 +34,13 @@
     // 3. 「·」分隔。规矩管的是界面自己拿「·」隔开内容；Fluid .typeset 里排的是文章原文（人名里的间隔号、原站页脚），原文是来源事实、不能改，单列出来不算错
     const dots = [], quoted = [];
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-    for (let n; (n = walker.nextNode());) if (n.textContent.includes('·')) (n.parentElement?.closest('.typeset') ? quoted : dots).push(n.textContent.trim().slice(0, 20));
+    // 中文的间隔号夹在一个名字中间（「界面新闻·消费」「列夫·托尔斯泰」）是标点，不是分隔；规矩管的是两段内容中间带空格的「 · 」和单独一个「·」
+    for (let n; (n = walker.nextNode());) {
+      if (!n.textContent.includes('·') || n.parentElement?.closest('script, style, noscript, template')) continue;
+      const t = n.textContent.trim();
+      if (n.parentElement?.closest('.typeset')) quoted.push(t.slice(0, 20));
+      else if (t === '·' || /\s·|·\s/.test(n.textContent)) dots.push(t.slice(0, 20));
+    }
     const quotedNote = quoted.length ? `（另有 ${quoted.length} 处在 .typeset 排的文章原文里，不算）` : '';
     out.push(dots.length ? `✗ 「·」：${dots.length} 处，例：${dots.slice(0, 3).join(' / ')}${quotedNote}` : `✓ 「·」：界面里没有${quotedNote}`);
 
@@ -104,7 +118,7 @@
     const clear = c => c === 'rgba(0, 0, 0, 0)' || c === 'transparent';
     // 收起的下拉里也有「选中」的选项，看不见的不算
     // 现查，不用开头存下的 all：上面第 4 项把滚动区滚到中间再滚回来，虚拟列表会把行换成新节点
-    const marked = [...doc.querySelectorAll('[data-selected],[aria-pressed="true"],[aria-current]:not([aria-current="false"]),[aria-selected="true"]')].filter(el => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+    const marked = [...doc.querySelectorAll('[data-selected],[aria-pressed="true"],[aria-current]:not([aria-current="false"]),[aria-selected="true"]')].filter(el => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && (!modal || modal.contains(el)));
     // 每个都先像键盘移过去那样滚进视野（nearest），再看四条边；查完滚回原处
     const scrolled = el => { const keep = []; for (let a = el.parentElement; a; a = a.parentElement) keep.push([a, a.scrollTop, a.scrollLeft]); return keep; };
     for (const el of marked) {
@@ -123,7 +137,9 @@
         const hit = doc.elementFromPoint(x, y);
         // 浏览器插件往 body 里塞的空壳（0×0、内容在封闭的 shadow 里）会抢走点位，它不是页面的东西、本身也画不出来，不算盖住
         const ghost = hit && hit.parentElement === doc.body && !hit.getBoundingClientRect().width && !hit.getBoundingClientRect().height && !hit.attributes.length;
-        if (hit && !ghost && hit !== el && !el.contains(hit) && !hit.contains(el)) { cut.push(`${name(el)} 被 ${name(hit)} 盖住`); break; }
+        // 弹层里行的底色被它所在滚动区自己画的滚动条盖住：Fluid 官网 CommandMenu 一样（滚动条平时透明，指着、滚动时才出来），组件原样不改
+        const ownBar = hit && inPopup(el) && hit.closest('[data-orientation="vertical"], [class*="group/scrollbar"]');
+        if (hit && !ghost && !ownBar && hit !== el && !el.contains(hit) && !hit.contains(el)) { cut.push(`${name(el)} 被 ${name(hit)} 盖住`); break; }
       }
       for (let a = el.parentElement; a && a !== doc.body; a = a.parentElement) {
         const o = css(a).overflowX + css(a).overflowY;
@@ -136,6 +152,7 @@
       for (let a = el.parentElement; a && a !== doc.body; a = a.parentElement) {
         if (!/(auto|scroll)/.test(css(a).overflowY) || a.scrollHeight <= a.clientHeight + 1) continue;
         const ar = a.getBoundingClientRect();
+        if (inPopup(el)) break;
         if (css(a).scrollbarWidth === 'none') {
           const strips = [...(a.parentElement?.querySelectorAll('*') ?? [])].filter(t => !a.contains(t) && css(t).position === 'absolute' && (() => { const q = t.getBoundingClientRect(); return q.width > 0 && q.width < 24 && Math.abs(q.right - ar.right) < 2; })());
           const drawn = strips.flatMap(t => [t, ...t.querySelectorAll('*')]).filter(t => !clear(css(t).backgroundColor)).map(t => t.getBoundingClientRect()).filter(q => q.width > 0 && q.top < r.bottom && q.bottom > r.top);
@@ -347,7 +364,9 @@
       const rows = [...sc.querySelectorAll('[data-slot="card"], [data-fluid-hover-index], li, [role="option"], [role="row"], [role="treeitem"], button, a[href]')]
         .filter(el => { const r = el.getBoundingClientRect(); return r.width > vr.width * 0.5 && r.bottom > vr.top && r.top < vr.bottom && el.checkVisibility({ opacityProperty: true, visibilityProperty: true }); });
       rowsSeen += rows.length;
-      const worst = rows.reduce((m, el) => (el.getBoundingClientRect().right > m.right ? el.getBoundingClientRect() : m), { right: -Infinity });
+      // 弹层里的行：底色照 Fluid 原样伸进轨道，查行里的字和图标让没让出轨道
+      const edge = el => inPopup(sc) ? Math.max(el.getBoundingClientRect().left, ...[...el.querySelectorAll('*')].filter(e => !e.children.length && e.getBoundingClientRect().width).map(e => e.getBoundingClientRect().right)) : el.getBoundingClientRect().right;
+      const worst = rows.reduce((m, el) => (edge(el) > m.right ? { right: edge(el) } : m), { right: -Infinity });
       const lap = worst.right - (vr.right - track);
       if (lap > 0.5) pressed.push(`${name(sc)} 里的行伸进滚动条 ${Math.round(lap)}px（轨道 ${Math.round(track)}px 宽，行的右边离滚动区右边只有 ${Math.round(vr.right - worst.right)}px）`);
     }
