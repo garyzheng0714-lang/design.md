@@ -526,7 +526,9 @@
       for (const s of [...doc.querySelectorAll('[data-slot="breadcrumb-separator"]')].filter(visible)) {
         const svg = s.querySelector('svg'), ink = (svg?.querySelector('path, polyline, line') ?? s).getBoundingClientRect();
         const crumb = s.parentElement, next = crumb.closest('li')?.nextElementSibling;
-        const left = textRects(crumb, '[data-slot="breadcrumb-separator"]').filter(r => r.right <= ink.left + 1).pop();
+        // 名字被省略号截掉时，字的位置量不准（整段字还在框外），按省略号所在那个框的右边量
+        const cut = [...crumb.querySelectorAll('*')].find(e => !e.closest('[data-slot="breadcrumb-separator"]') && e.scrollWidth > e.clientWidth + 1 && /hidden|clip/.test(css(e).overflowX));
+        const left = cut ? { right: cut.getBoundingClientRect().right - parseFloat(css(cut).paddingRight) } : textRects(crumb, '[data-slot="breadcrumb-separator"]').filter(r => r.right <= ink.left + 1).pop();
         const marks = next ? [...textRects(next), ...[...next.querySelectorAll('img, svg, [role="img"]')].filter(visible).map(e => e.getBoundingClientRect())] : [];
         if (!left || !marks.length) continue;
         const l = ink.left - left.right, r = Math.min(...marks.map(m => m.left)) - ink.right;
