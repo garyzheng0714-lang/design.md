@@ -10,7 +10,8 @@
 - `验收.md`：从动手到交付的检查，总纲第 2、3、4 步链过去。起因是用户 2026-11-19 指出检查流程有大问题（回弹、手排的日志、堆字的数据都是用户自己用出来的），并要求「根据人家的区块来做设计」「每一次检查都要问自己是否有更合适的组件」。设置窗口那条是用户 2026-11-20 改点对点工具时定的，参照 Typeless：「入口不能只有设置一个」，又说启动路径和帮助「就不需要有显示入口了」，侧栏摆一组工具入口「越看越差」，最后说「我的这个偏好你应该计入到design.md」。自查脚本 `tools/page-check.js` 查回弹、横向溢出、「·」、固定表头被盖、字体；用户再发现能让机器判断的问题，就加进这个脚本，测试题 `evals/` 也加一条。
 - `hig/`：苹果原文，中文（官方译文）一章一个文件，英文在 `hig/en/`。是八条原则的出处，备查，不是规矩。
 - `skills/feel-good-ui/`：总纲第 1、2 步用的技能，我们自己的，用户 2026-11-20 起的名。里面是 Emil Kowalski 的 apple-design（加它引用的 animation-performance）和 Jakub Krehel 的 make-interfaces-feel-better 两份原文（MIT），外面一层 `SKILL.md` 是我们写的。`~/.claude/skills/feel-good-ui` 和 `~/.agents/skills/feel-good-ui`（Codex 读这里）都软链到这个文件夹，不另装第三方原版。上游更新跑 `tools/sync-feel-good-ui.sh`。来历：三轮技能比拼（2026-11-19 点对点工具，11-20 客户线索两轮）make-interfaces-feel-better 都是用户最满意的；第三轮拿它和 4 个技能单用、叠加对比，用户选了 apple-design 叠加它：「这个确实最舒服，就这个吧。」比拼材料在用户桌面「设计技能比拼-客户线索-第三轮-20261120」。
-- 用到的工具：beUI 的 MCP 免费，Claude Code 接法 `claude mcp add -s user --transport http beui https://mcp.beui.dev/mcp`，Codex `codex mcp add beui --url https://mcp.beui.dev/mcp`；IconMCP 免费、MIT，Claude Code 接法 `claude mcp add -s user --transport http iconmcp https://iconmcp.com/mcp`，Codex 在 `~/.codex/config.toml` 加 `[mcp_servers.iconmcp]` 和 `url = "https://iconmcp.com/mcp"`；GSAP（gsap.com）自 Webflow 收购后全部免费，含插件；beUI 组件自带的动效（Motion）原样留着，GSAP 只管自己加的动效；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
+- `组件库.md`：唯一的组件库 Fluid Functionalism 的接法和固定设定，总纲第 1 步链过去。用户 2026-11-24 贴了官网的 starter 说明（Base UI、圆角、默认尺寸、Lucide、跟随系统、强调色 #4C82D9），说「这个组件库将成为唯一的组件库，之前的所有组件库都删除干净」，又给了官网「系统」那 8 页：「你应该作为唯一参考标准，优先参考该组件库的原生规范」。官网每页的「Design details」都指向官方技能的 `references/craft.md`，7 个系统各有一节，所以技能就是规范全文；技能用官方装法 `npx skills add mickadesign/fluid-functionalism -g -y`，装在 `~/.agents/skills/fluid-functionalism`，Claude Code 那边是软链。
+- 用到的工具：Fluid Functionalism（MIT，免费，没有 MCP，官网 `/llms.txt`、文档网址加 `.md` 能读原文）；unslop-ui（github.com/felipebasurto/unslop-ui，MIT）装法 `npx skills add felipebasurto/unslop-ui -g`，只能人手调用（`/unslop-ui`），智能体照它的 SKILL.md 逐条查。
 
 ## 改了要做的
 
@@ -20,13 +21,14 @@
 
 ## 定了不做的事
 
+- 2026-11-24：不再用 beUI、HeroUI、Su Design（`@su`）、IconMCP、GSAP，组件只用 Fluid Functionalism（用户原话见上面 `组件库.md` 那条）。图标跟着 Fluid 用 Lucide（用户贴的设定里定了 Lucide）。GSAP 是我的判断：Fluid 要求自己加的动效也只用它的三档弹簧、不手写时长（技能 `custom-motion.md`），再留一套动画库节奏会对不上；用户不同意可以加回来。beUI、IconMCP 的 MCP，`heroui-react` 技能，本机自维护的 `shadcn` 插件（写的还是 `@su`、HeroUI、beUI）和旧的 `fluid-functionalism` 插件都删了，换成官方技能。我们自己的文字排版、验收只补 Fluid 没管到的，和它冲突时听它：字号、字重、颜色改用 Fluid 的六个角色、三档字重、两种颜色；「会滑的悬停底色只给几项的导航」那条作废，改成悬停只用 Fluid 的、250ms 内要滑到位，`tools/page-check.js` 第 6 项跟着改。
 - 2026-11-20：技能不用第三方原名（apple-design 之类），不让用户点名唤起技能。挑中的技能并进我们自己的 feel-good-ui，总纲经全局 CLAUDE.md 引用自动加载（用户：「这个技能不应该叫做什么apple-design，你在搞什么」）。
 
 - 2026-11-20：总纲不再有「找方向」这一步，也不用 Mobbin 找参考（用户：「先从产品领域里找方向，这种可以去掉」「不需要他们找方向了」「mobbin mcp从我的design.md里彻底去掉」）。测试题里查 Mobbin 引用的那条也删了。
 - 2026-11-19：总纲不加这几句：「设计尽量少，产品是工具不是装饰」「只在一处用力，其余克制」「方向是苹果备忘录、Linear 官网那样的干净克制」「先写一页计划」，以及动效、键盘、44px 点按区的细则。三道题盲评，用户每题都选了没加这些的现行版，加了的两版评语是「看着就不舒服」「丑哭」。测试题在 `evals/`。
 - 2026-11-19：总纲不再照抄苹果原文、不列章节目录，只划边界、指方向（用户原话见开头）。下面 11-10「一个不留，全照苹果原文」那条就此作废；原文还在 `hig/`，旧版总纲在 git 历史里（最后一版 `a53af0c`）。
 
-- 2026-11-18：不再用 HeroUI，网页组件换成 beUI（用户：「不再用HeroUI了，我换成beui了」）。下面 11-10 那条「不改组件库样式」照旧，只是组件库换成 beUI。
+- 2026-11-18：不再用 HeroUI，网页组件换成 beUI（用户：「不再用HeroUI了，我换成beui了」）。下面 11-10 那条「不改组件库样式」照旧，组件库 11-24 再换成 Fluid。
 - 2026-11-10：不照苹果改 HeroUI 组件样式（圆角、颜色、尺寸都以 HeroUI 为准），总纲和组件库互相独立（用户：「组件，例如圆角啊，样式啊，还是以 HeroUI 为准」「否则做出来的东西就太过于苹果风了，我仍旧希望保留原本组件库的质感」）。改过的 `heroui/apple.css`、`heroui/sync.py` 和各项目的 `heroui-apple.css` 已撤掉，在 git 历史里（最后一版 `d06b0d0`）。
 - 2026-11-10：不再有我们自己的设计规矩，一个不留，全照苹果原文（用户：「我们自己的东西一个不留，全面都按照这个苹果的来，你要基于苹果的原文，一定是原文」）。原来的总纲正文、口味档案、决策日志、评测记录都删了，在 git 历史里（最后一版 `d971999`）。
 - 2026-11-07：删掉 design 插件（技能、流程、钩子、监工和体验员两个子智能体），不再做自己的设计技能或插件（用户：「把我们的design插件删掉」）。旧代码在 git 历史里（最后一版 `6669071`）。
