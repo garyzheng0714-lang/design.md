@@ -7,7 +7,8 @@
   evidence.py build <记录文件夹> [--ui]         核对通过后生成 index.html（给用户在浏览器看）
 
 核对的规矩：三段标题齐全（查了什么、没查什么、审出什么）；--ui 时要贴自查脚本完整输出且没有 ✗；--ui 时还要有「组件对照」一段表格（每块是不是 Fluid、比过哪些、为什么选它）；每一项「### 」都有「结论：」；
-每张图文件都在、紧跟着有「标注：」一行写清框出了什么；模板里的占位字一个不剩；至少一张图或一段命令输出。
+每张图文件都在、紧跟着有「标注：」一行写清框出了什么；模板里的占位字一个不剩；至少一张图或一段命令输出；
+正文（不算代码块里的命令输出、图片地址和 Markdown 记号）不超过 500 字，能画成 SVG 的不写成字（用户 2026-11-24 定）。
 """
 import html
 import os
@@ -21,6 +22,14 @@ SECTIONS = ["## 查了什么", "## 没查什么", "## 审出什么"]
 UI_SECTION = "## 组件对照"
 PLACEHOLDER = re.compile(r"……|<哪一处>|<写清楚>")
 IMG = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)")
+MAX_WORDS = 500  # 用户 2026-11-24：「你的汇报不允许超过500个字」「能用svg就不用文字」
+
+
+def words(text):
+    """正文字数：去掉代码块（命令原输出是证据，不算汇报）、图片地址、Markdown 记号和空白。"""
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    text = IMG.sub("", text)
+    return len(re.sub(r"[\s#|*`>-]", "", text))
 
 TEMPLATE = """# {item}（{project}，{date}）
 
@@ -137,6 +146,9 @@ def problems(folder, ui):
             out.append(f"自查脚本还有 {len(bad)} 条 ✗ 没改：" + "；".join(x[:60] for x in bad[:3]))
     if images == 0 and "```" not in text:
         out.append("既没有截图也没有命令输出，等于没查")
+    n = words(text)
+    if n > MAX_WORDS:
+        out.append(f"正文 {n} 字，超过 {MAX_WORDS} 字：能画成 SVG 的（前后对比、流程、数字）画成图，其余删到只剩结论")
     return out
 
 
@@ -237,7 +249,7 @@ def build(folder, ui):
         "body{font:14px/1.6 -apple-system,'PingFang SC',sans-serif;max-width:1600px;margin:24px auto;padding:0 24px;color:#111}"
         "h1{font-size:20px}h2{font-size:16px;margin-top:24px}h3{font-size:15px;margin:28px 0 8px}"
         ".row{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;align-items:start}"
-        "figure{margin:0}figcaption{color:#666;font-size:12px;margin-bottom:4px}img{width:100%;border:1px solid #ddd;border-radius:6px;display:block}"
+        "figure{margin:0}figcaption{color:#666;font-size:12px;margin-bottom:4px}img{max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px;display:block}"
         ".note{color:#444;font-size:12px;margin:4px 0 0}.verdict{font-weight:600;margin:8px 0}.text{color:#666;font-size:13px}"
         "details{margin-top:16px;border-top:1px solid #eee;padding-top:8px}summary{cursor:pointer;color:#666}"
         "table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;vertical-align:top}th{background:#f6f6f6}"
