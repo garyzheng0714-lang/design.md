@@ -287,6 +287,33 @@
       }
     }
     out.push(clipped.length ? `✗ 省略号被裁掉：${clipped.length} 处，例：${clipped.slice(0, 3).join('；')}` : `✓ 省略号：${dotted.length} 处打省略号的字都在框里`);
+
+    // 10. 字的上下被裁：Fluid 把一行收到大写字母那么高（text-box-trim），外面再套一层 overflow hidden、clip（比如 truncate），
+    // 汉字高出、低于那条线的笔画就被切掉，「营」看着像「宫」（2026-11-24 资讯订阅热点页、电脑端群发工具执行记录各犯一次）。
+    // 字框比裁切框多出字号的 15% 以上才算：行高写成 1 的字，字框本来就比字形高一点。整行藏起来的（line-clamp 后面几行）不算。
+    const sliced = [];
+    let lines = 0;
+    const texts = doc.createTreeWalker(doc.body, win.NodeFilter.SHOW_TEXT);
+    for (let n; (n = texts.nextNode());) {
+      const el = n.parentElement;
+      if (!n.textContent.trim() || !el || !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      let a = el;
+      for (; a && a !== doc.documentElement; a = a.parentElement) {
+        const o = css(a).overflowY;
+        if (o === 'hidden' || o === 'clip' || o === 'auto' || o === 'scroll') break;
+      }
+      if (!a || a === doc.documentElement || /(auto|scroll)/.test(css(a).overflowY)) continue;
+      const box = a.getBoundingClientRect(), m = parseFloat(css(a).overflowClipMargin) || 0, size = parseFloat(css(el).fontSize) || 14;
+      const range = doc.createRange();
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) {
+        if (r.width < 1 || r.bottom <= box.top || r.top >= box.bottom) continue;
+        lines++;
+        const off = Math.max(box.top - m - r.top, r.bottom - box.bottom - m);
+        if (off > size * 0.15 + 1) { sliced.push(`${name(el)}「${n.textContent.trim().slice(0, 12)}」上下被 ${name(a)} 裁掉 ${Math.round(off)}px`); break; }
+      }
+    }
+    out.push(sliced.length ? `✗ 字的上下被裁：${sliced.length} 处，例：${sliced.slice(0, 3).join('；')}` : `✓ 字的上下：${lines} 行裁切框里的字都完整`);
   }
   return out.join('\n');
 })();
