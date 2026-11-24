@@ -173,11 +173,29 @@ def build(folder, ui):
         body.append(out + "</tbody></table>")
         table.clear()
 
+    figs, opened = [], [False, 0]
+
+    def flush_figs():
+        if figs:
+            body.append("<div class=row>" + "".join(figs) + "</div>")
+            figs.clear()
+
     for line in text.splitlines():
         if code is None and line.lstrip().startswith("|"):
+            flush_figs()
             table.append(line)
             continue
         flush_table()
+        m = IMG.search(line) if code is None else None
+        if m:
+            label = inline(line[:m.start()].strip().rstrip("：:"))
+            src = html.escape(m.group(2))
+            figs.append(f"<figure><figcaption>{label}</figcaption><a href=\"{src}\" target=_blank><img src=\"{src}\" alt=\"{html.escape(m.group(1))}\"></a></figure>")
+            continue
+        if code is None and line.startswith("标注：") and figs:
+            figs[-1] = figs[-1].replace("</figure>", f"<p class=note>{inline(line[3:])}</p></figure>")
+            continue
+        flush_figs()
         if line.startswith("```"):
             if code is None:
                 code = []
@@ -188,33 +206,42 @@ def build(folder, ui):
         if code is not None:
             code.append(line)
             continue
-        m = IMG.search(line)
-        if m:
-            label = inline(line[:m.start()].strip())
-            body.append(f"<figure><figcaption>{label}</figcaption><img src=\"{html.escape(m.group(2))}\" alt=\"{html.escape(m.group(1))}\"></figure>")
-        elif line.startswith("### "):
+        if line.startswith("### "):
             body.append(f"<h3>{inline(line[4:])}</h3>")
         elif line.startswith("## "):
-            body.append(f"<h2>{inline(line[3:])}</h2>")
+            opened[1] += 1
+            if opened[0]:
+                body.append("</details>")
+                opened[0] = False
+            if opened[1] == 1:
+                body.append(f"<h2>{inline(line[3:])}</h2>")
+            else:
+                body.append(f"<details><summary>{inline(line[3:])}</summary>")
+                opened[0] = True
         elif line.startswith("# "):
             body.append(f"<h1>{inline(line[2:])}</h1>")
         elif line.startswith("- "):
             body.append(f"<li>{inline(line[2:])}</li>")
         elif line.startswith("标注："):
-            body.append(f"<p class=note>{inline(line)}</p>")
+            body.append(f"<p class=note>{inline(line[3:])}</p>")
         elif line.startswith("结论："):
-            body.append(f"<p class=verdict>{inline(line)}</p>")
+            body.append(f"<p class=verdict>{inline(line[3:])}</p>")
         elif line.strip():
-            body.append(f"<p>{inline(line)}</p>")
+            body.append(f"<p class=text>{inline(line)}</p>")
+    flush_figs()
     flush_table()
+    if opened[0]:
+        body.append("</details>")
     page = (
         "<!doctype html><meta charset=utf-8><title>检查记录</title><style>"
-        "body{font:15px/1.7 -apple-system,'PingFang SC',sans-serif;max-width:1100px;margin:32px auto;padding:0 24px;color:#111}"
-        "h2{margin-top:40px;border-top:1px solid #ddd;padding-top:16px}h3{margin-top:28px}"
-        "figure{margin:12px 0}figcaption{color:#666;font-size:13px}img{max-width:100%;border:1px solid #ccc;border-radius:6px}"
-        ".note{color:#444;background:#f6f6f6;padding:6px 10px;border-radius:6px}.verdict{font-weight:600}"
-        "table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;vertical-align:top}th{background:#f6f6f6}"
-        "pre{background:#f6f6f6;padding:10px;border-radius:6px;white-space:pre-wrap}code{background:#f2f2f2;padding:0 4px;border-radius:4px}"
+        "body{font:14px/1.6 -apple-system,'PingFang SC',sans-serif;max-width:1600px;margin:24px auto;padding:0 24px;color:#111}"
+        "h1{font-size:20px}h2{font-size:16px;margin-top:24px}h3{font-size:15px;margin:28px 0 8px}"
+        ".row{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;align-items:start}"
+        "figure{margin:0}figcaption{color:#666;font-size:12px;margin-bottom:4px}img{width:100%;border:1px solid #ddd;border-radius:6px;display:block}"
+        ".note{color:#444;font-size:12px;margin:4px 0 0}.verdict{font-weight:600;margin:8px 0}.text{color:#666;font-size:13px}"
+        "details{margin-top:16px;border-top:1px solid #eee;padding-top:8px}summary{cursor:pointer;color:#666}"
+        "table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;vertical-align:top}th{background:#f6f6f6}"
+        "pre{background:#f6f6f6;padding:10px;border-radius:6px;white-space:pre-wrap;font-size:12px}code{background:#f2f2f2;padding:0 4px;border-radius:4px}"
         "</style>" + "\n".join(body)
     )
     out = os.path.join(folder, "index.html")
