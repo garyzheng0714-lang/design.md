@@ -160,8 +160,24 @@ def build(folder, ui):
     if check(folder, ui):
         return 1
     text = open(os.path.join(folder, "记录.md"), encoding="utf-8").read()
-    body, code = [], None
+    body, code, table = [], None, []
+
+    def flush_table():
+        if not table:
+            return
+        cells = lambda row: [c.strip() for c in row.strip().strip("|").split("|")]
+        rows = [r for r in table if not re.fullmatch(r"\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*", r.strip())]
+        head, rest = rows[0], rows[1:]
+        out = "<table><thead><tr>" + "".join(f"<th>{inline(c)}</th>" for c in cells(head)) + "</tr></thead><tbody>"
+        out += "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in cells(r)) + "</tr>" for r in rest)
+        body.append(out + "</tbody></table>")
+        table.clear()
+
     for line in text.splitlines():
+        if code is None and line.lstrip().startswith("|"):
+            table.append(line)
+            continue
+        flush_table()
         if line.startswith("```"):
             if code is None:
                 code = []
@@ -190,12 +206,14 @@ def build(folder, ui):
             body.append(f"<p class=verdict>{inline(line)}</p>")
         elif line.strip():
             body.append(f"<p>{inline(line)}</p>")
+    flush_table()
     page = (
         "<!doctype html><meta charset=utf-8><title>检查记录</title><style>"
         "body{font:15px/1.7 -apple-system,'PingFang SC',sans-serif;max-width:1100px;margin:32px auto;padding:0 24px;color:#111}"
         "h2{margin-top:40px;border-top:1px solid #ddd;padding-top:16px}h3{margin-top:28px}"
         "figure{margin:12px 0}figcaption{color:#666;font-size:13px}img{max-width:100%;border:1px solid #ccc;border-radius:6px}"
         ".note{color:#444;background:#f6f6f6;padding:6px 10px;border-radius:6px}.verdict{font-weight:600}"
+        "table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;vertical-align:top}th{background:#f6f6f6}"
         "pre{background:#f6f6f6;padding:10px;border-radius:6px;white-space:pre-wrap}code{background:#f2f2f2;padding:0 4px;border-radius:4px}"
         "</style>" + "\n".join(body)
     )
