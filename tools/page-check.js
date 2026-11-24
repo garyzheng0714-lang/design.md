@@ -60,25 +60,37 @@
       .map(p => [...p.children].filter(c => c.matches('button, a[href], li') && hit(c)))
       .filter(items => items.length >= 6);
     const lag = [];
+    // 底色画在「不接鼠标、有底色」的那层；悬停前就在的（选中项的底色）不算
+    const painted = box => [...box.querySelectorAll('*')].filter(el => {
+      const s = css(el), r = el.getBoundingClientRect();
+      return s.pointerEvents === 'none' && r.height > 8 && Number(s.opacity) > 0.1 && s.backgroundColor !== 'rgba(0, 0, 0, 0)';
+    });
+    // 有的按 mouseover 认行，有的（Fluid 的 useFluidHover）按 mousemove 的坐标认行，两样都发、带上那一行中心的坐标
+    const at = el => { const r = el.getBoundingClientRect(); return { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; };
+    const move = (el, from) => {
+      el.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true, relatedTarget: from, ...at(el) }));
+      el.dispatchEvent(new win.MouseEvent('mousemove', { bubbles: true, ...at(el) }));
+    };
+    let untested = 0;
     for (const items of lists) {
       const [a, b] = items.map(hit);
       const box = items[0].parentElement;
-      a.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true, relatedTarget: doc.body }));
+      const before = new Set(painted(box));
+      move(a, doc.body);
       await new Promise(r => setTimeout(r, 500));
       // React 从 mouseout 算「离开 a、进入 b」，所以两个事件都发。
-      a.dispatchEvent(new win.MouseEvent('mouseout', { bubbles: true, relatedTarget: b }));
-      b.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true, relatedTarget: a }));
+      a.dispatchEvent(new win.MouseEvent('mouseout', { bubbles: true, relatedTarget: b, ...at(b) }));
+      move(b, a);
       await new Promise(r => setTimeout(r, 250));
       const top = items[1].getBoundingClientRect().top;
-      const marks = [...box.querySelectorAll('*')].filter(el => {
-        const s = css(el), r = el.getBoundingClientRect();
-        return s.pointerEvents === 'none' && r.height > 8 && Number(s.opacity) > 0.1 && s.backgroundColor !== 'rgba(0, 0, 0, 0)';
-      });
+      const marks = painted(box).filter(m => !before.has(m) || Math.abs(m.getBoundingClientRect().top - top) <= 2);
+      if (!marks.length) untested++;
       const off = Math.max(0, ...marks.map(m => Math.round(Math.abs(m.getBoundingClientRect().top - top))));
       if (off > 2) lag.push(`${name(box)} 慢了 ${off}px`);
       b.dispatchEvent(new win.MouseEvent('mouseout', { bubbles: true, relatedTarget: doc.body }));
+      box.dispatchEvent(new win.MouseEvent('mouseleave', { bubbles: false }));
     }
-    out.push(lag.length ? `✗ 悬停底色 250ms 还没滑到鼠标那一行：${lag.slice(0, 3).join('；')}` : `✓ 悬停底色：${lists.length} 组列表 250ms 内都到位（CSS 悬停要人眼看）`);
+    out.push(lag.length ? `✗ 悬停底色 250ms 还没滑到鼠标那一行：${lag.slice(0, 3).join('；')}` : `✓ 悬停底色：${lists.length - untested} 组列表 250ms 内都到位${untested ? `，${untested} 组脚本没让底色出来（CSS 悬停之类），要人眼看` : ''}`);
 
     // 7. 选中、正在看、当前页的那一项，描边和外圈要整圈看得见：贴边的栏头、相邻的块、父级裁切都可能盖掉一条边。
     const cut = [];
