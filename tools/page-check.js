@@ -596,9 +596,8 @@
         if (!visible(root)) continue;
         const blocks = [...root.querySelectorAll('p, li, blockquote, dd')].filter(el => visible(el) && !el.closest('figure, figcaption, table, pre, code, aside') && [...el.childNodes].some(n => n.nodeType === 3 && n.data.trim()));
         if (blocks.length < 3) continue;
-        const sizes = blocks.map(el => parseFloat(css(el).fontSize)), count = new Map();
-        sizes.forEach(v => count.set(v, (count.get(v) ?? 0) + 1));
-        const body = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        // 正文字号认容器自己的（Fluid .typeset 在容器上定正文字号）；不取段落里最常见的，中外对照时外文段落和中文一样多，会把小字当成正文
+        const sizes = blocks.map(el => parseFloat(css(el).fontSize)), body = parseFloat(css(root).fontSize);
         blocks.forEach((el, i) => { if (sizes[i] < body - 0.5) small.push(`${sizes[i]} 对 ${body}「${el.textContent.trim().slice(0, 10)}」`); });
       }
       out.push(small.length ? `✗ 正文里有段落比正文小：${small.length} 段，例：${small.slice(0, 2).join('，')}（对照的原文、引文都和正文同一个字号，靠颜色分主次）` : '✓ 正文字号：段落都和正文一样大');
