@@ -6,7 +6,7 @@
   evidence.py check <记录文件夹> [--ui]         核对，不过就列出缺什么、退出码 1；--ui 时至少要有一张截图
   evidence.py build <记录文件夹> [--ui]         核对通过后生成 index.html（给用户在浏览器看）
 
-核对的规矩：三段标题齐全（查了什么、没查什么、审出什么）；每一项「### 」都有「结论：」；
+核对的规矩：三段标题齐全（查了什么、没查什么、审出什么）；--ui 时还要有「组件对照」一段表格（每块是不是 Fluid、比过哪些、为什么选它）；每一项「### 」都有「结论：」；
 每张图文件都在、紧跟着有「标注：」一行写清框出了什么；模板里的占位字一个不剩；至少一张图或一段命令输出。
 """
 import html
@@ -18,10 +18,17 @@ import time
 
 ROOT = os.path.expanduser("~/Agentic-Engineering/检查记录")
 SECTIONS = ["## 查了什么", "## 没查什么", "## 审出什么"]
+UI_SECTION = "## 组件对照"
 PLACEHOLDER = re.compile(r"……|<哪一处>|<写清楚>")
 IMG = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)")
 
 TEMPLATE = """# {item}（{project}，{date}）
+
+## 组件对照
+
+| 哪一块 | 用的 Fluid 组件或区块 | 比过的同类 | 为什么选它（不是 Fluid 的写为什么不换） |
+| --- | --- | --- | --- |
+| <哪一处> | <写清楚> | <写清楚> | <写清楚> |
 
 ## 查了什么、怎么查的
 
@@ -99,6 +106,19 @@ def problems(folder, ui):
         out.append("一项检查（### 标题）都没有")
     if ui and images == 0:
         out.append("改了界面却一张截图都没有")
+    if ui:
+        at = next((i for i, line in enumerate(lines) if line.startswith(UI_SECTION)), None)
+        if at is None:
+            out.append("缺一段「组件对照」（每块是不是 Fluid、比过哪些、为什么选它）")
+        else:
+            rows = []
+            for line in lines[at + 1:]:
+                if line.startswith("## "):
+                    break
+                if line.startswith("|") and not set(line.replace("|", "").strip()) <= set("-: "):
+                    rows.append(line)
+            if len(rows) < 2:
+                out.append("「组件对照」表格里一块都没写")
     if images == 0 and "```" not in text:
         out.append("既没有截图也没有命令输出，等于没查")
     return out
