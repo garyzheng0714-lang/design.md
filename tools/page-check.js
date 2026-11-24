@@ -413,6 +413,15 @@
     const DATE_END = /(\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}月\d{1,2}日|\d{1,2}:\d{2}|昨天|前天)(周[一二三四五六日])?$/;
     const cutTimes = [...doc.querySelectorAll('*')].filter(el => visible(el) && css(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && DATE_END.test(el.textContent.trim()));
     out.push(cutTimes.length ? `✗ 时间被省略号截掉：${cutTimes.length} 处，例：${cutTimes.slice(0, 3).map(el => `「${el.textContent.trim().slice(-14)}」`).join('，')}（时间单拎出来 shrink-0，截前面的标题、来源）` : '✓ 时间：没有被省略号截掉的');
+
+    // 16. 骨架和真内容不一样大（2026-11-24 资讯订阅热点展开：三条骨架叠在一格里成了一行，报道到了下面的事件一帧跳 146px；右栏「其他报道」骨架少了行距，跳 5px）：
+    // 照 Fluid reveal 的 reveal-swap，一格里只放一块骨架、一块真内容，叠在一起；骨架照真内容的行数、行高、行距做。骨架比真内容高会在下面留白。
+    // 同一帧整块换掉、数据到了一帧跳，这里看不出来，用 tools/frame-jump.js 逐帧看。
+    const swaps = [...doc.querySelectorAll('.reveal-swap')].filter(el => el.getBoundingClientRect().width > 0);
+    const crowded = swaps.filter(el => el.children.length > 2);
+    const skelOf = el => [...el.children].find(c => c.getAttribute('aria-hidden') === 'true' || c.matches('[data-slot="skeleton"], [data-sidebar="menu-skeleton"]'));
+    const tall = swaps.filter(el => el.children.length === 2 && skelOf(el)).map(el => { const sk = skelOf(el), real = [...el.children].find(c => c !== sk); return [el, Math.round(sk.getBoundingClientRect().height - real.getBoundingClientRect().height)]; }).filter(([, d]) => d > 2);
+    out.push(crowded.length ? `✗ 骨架叠成一格：${crowded.length} 处 reveal-swap 里放了 ${crowded[0].children.length} 块（一格只放一块骨架、一块真内容，多行骨架先包成一块）` : tall.length ? `✗ 骨架比真内容高：${tall.length} 处，例：${tall.slice(0, 3).map(([el, d]) => `${name(el)} 高出 ${d}px`).join('，')}（骨架照真内容的行数、行高、行距做）` : `✓ 骨架：${swaps.length} 处 reveal-swap，没有叠成一格或比真内容高的`);
   }
   return out.join('\n');
 })();
