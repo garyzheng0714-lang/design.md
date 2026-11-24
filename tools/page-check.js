@@ -2,7 +2,8 @@
 // 在开发者工具的控制台里粘贴运行，或者交给 Claude in Chrome 的 javascript_tool。
 // 页面和它里面同源的 iframe 都查；会把每个滚动区滚到中间再滚回去。查不出问题时只说查了什么，不说「都正常」。
 (async () => {
-  const docs = [document, ...[...document.querySelectorAll('iframe')].map(f => { try { return f.contentDocument; } catch { return null; } }).filter(Boolean)];
+  // 藏着的空 iframe（没打开的面板、about:blank）不算页面（2026-11-24 FBIF-电脑端群发工具预览页：两个 0×0 的 iframe 报回弹）
+  const docs = [document, ...[...document.querySelectorAll('iframe')].filter(f => f.checkVisibility() && f.getBoundingClientRect().width > 0).map(f => { try { return f.contentDocument; } catch { return null; } }).filter(Boolean)];
   const out = [];
   // 透明的挡板（Fluid 弹层开着时铺满全屏、只拦点击的 popup-shield，背景 rgba(0,0,0,0)、没字没边没影）什么都不画，挡在上面不算盖住（2026-11-24 FBIF-电脑端群发工具会话报的误报）
   const paintsNothing = el => { const c = getComputedStyle(el); return !el.textContent.trim() && !el.querySelector('img, svg, video, canvas') && c.backgroundColor === 'rgba(0, 0, 0, 0)' && c.backgroundImage === 'none' && c.boxShadow === 'none' && !parseFloat(c.borderTopWidth) && !parseFloat(c.borderBottomWidth) && !parseFloat(c.borderLeftWidth) && !parseFloat(c.borderRightWidth) && c.outlineStyle === 'none'; };
