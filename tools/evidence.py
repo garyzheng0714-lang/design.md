@@ -6,7 +6,7 @@
   evidence.py check <记录文件夹> [--ui]         核对，不过就列出缺什么、退出码 1；--ui 时至少要有一张截图
   evidence.py build <记录文件夹> [--ui]         核对通过后生成 index.html（给用户在浏览器看）
 
-核对的规矩：三段标题齐全（查了什么、没查什么、审出什么）；--ui 时还要有「组件对照」一段表格（每块是不是 Fluid、比过哪些、为什么选它）；每一项「### 」都有「结论：」；
+核对的规矩：三段标题齐全（查了什么、没查什么、审出什么）；--ui 时要贴自查脚本完整输出且没有 ✗；--ui 时还要有「组件对照」一段表格（每块是不是 Fluid、比过哪些、为什么选它）；每一项「### 」都有「结论：」；
 每张图文件都在、紧跟着有「标注：」一行写清框出了什么；模板里的占位字一个不剩；至少一张图或一段命令输出。
 """
 import html
@@ -43,6 +43,14 @@ TEMPLATE = """# {item}（{project}，{date}）
 改后：![改后](03-改后.png)
 标注：……
 结论：……
+
+## 自查脚本
+
+每种布局、每个状态（详情开、关）各跑一次 tools/page-check.js，输出原样贴进来，不能有一条 ✗：
+
+```
+<写清楚>
+```
 
 ## 没查什么
 
@@ -119,6 +127,14 @@ def problems(folder, ui):
                     rows.append(line)
             if len(rows) < 2:
                 out.append("「组件对照」表格里一块都没写")
+    if ui:
+        blocks = re.findall(r"```[^\n]*\n(.*?)```", text, re.S)
+        runs = [b for b in blocks if "字的上下" in b and "—— " in b]
+        if not runs:
+            out.append("改了界面却没贴自查脚本（tools/page-check.js）的完整输出（要有「—— 页面」开头和「字的上下」那一行）")
+        bad = [l.strip() for b in blocks for l in b.splitlines() if l.strip().startswith("✗")]
+        if bad:
+            out.append(f"自查脚本还有 {len(bad)} 条 ✗ 没改：" + "；".join(x[:60] for x in bad[:3]))
     if images == 0 and "```" not in text:
         out.append("既没有截图也没有命令输出，等于没查")
     return out
