@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- page-check.js 第 8 项的测试页（2026-11-24）：照 Fluid Card 的结构，点击层是一块没字的按钮，标题有一份隐藏的加粗副本，标题上面还有一个小标签（官网预览那种做法）。
+     打开 ?case=bold：选中的标题用 wght 550 加粗，底色 7% 黑、指着 4% 黑（和 Fluid 官网卡片演示一样），不该报。
+     打开 ?case=flat：选中的标题不加粗，底色同上，要报「指着和选中分不清」。 -->
+<html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{font:14px sans-serif;margin:24px;background:#fff}
+.group{position:relative;display:flex;flex-direction:column;gap:8px;width:320px}
+.card{position:relative;z-index:10;padding:12px;border-radius:12px}
+.fill{position:absolute;inset:0;z-index:-10;background:rgba(0,0,0,.07);border-radius:12px;pointer-events:none}
+.card button{position:absolute;inset:0;z-index:20;border:0;background:none;cursor:pointer}
+.t{display:grid;font-variation-settings:"wght" 400}.t>span{grid-area:1/1}.t>.ghost{visibility:hidden;font-variation-settings:"wght" 550}
+.bold [data-selected] .t>span:not(.ghost){font-variation-settings:"wght" 550}
+.d{color:#888}.b{font-size:12px;color:#36c}
+.hl{position:absolute;left:0;top:0;width:320px;height:62px;background:rgba(0,0,0,.04);border-radius:12px;pointer-events:none;opacity:0;z-index:0}
+</style></head><body>
+<div class="group" id="g"><div class="hl"></div></div>
+<script>
+const g = document.getElementById('g'), hl = g.querySelector('.hl');
+g.classList.toggle('bold', new URLSearchParams(location.search).get('case') !== 'flat');
+['韩雪', '李娜', '林晓雯', '徐静'].forEach((n, i) => {
+  const c = document.createElement('div');
+  c.className = 'card';
+  if (i === 1) c.setAttribute('data-selected', 'true');
+  c.innerHTML = (i === 1 ? '<div class="fill"></div>' : '') + `<span class="b">还没上</span><div class="t"><span class="ghost">${n}</span><span>${n}</span></div><div class="d">测试公司 总监</div><button aria-label="${n}"></button>`;
+  g.appendChild(c);
+  c.querySelector('button').addEventListener('mouseover', () => { hl.style.opacity = i === 1 ? 0 : 1; hl.style.height = c.offsetHeight + 'px'; hl.style.transform = `translateY(${c.offsetTop}px)`; });
+});
+g.addEventListener('mouseleave', () => { hl.style.opacity = 0; });
+</script></body></html>
