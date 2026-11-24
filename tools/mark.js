@@ -1,7 +1,7 @@
 // 在页面上画框标注，给检查记录截图用（验收.md「存证」）。
 // 用法：在 Chrome 里 (0,eval)(await fetch('http://localhost:5291/mark.js').then(r=>r.text()))
 //   __mark([{ sel: '.card', label: '① 滚动条压住卡片', tone: 'bad' }, { rect: [x, y, w, h], label: '② 官网写法', tone: 'ref' }])
-//   截图（save_to_disk）后 __unmark()。tone：bad 红（问题）、ok 绿（改好）、ref 蓝（参考）；all: true 框出全部匹配
+//   截图（save_to_disk）后 __unmark()。tone：bad 红（问题）、ok 绿（改好）、ref 蓝（参考）；all: true 框出全部匹配；below: true 标签放框下面（上面要看的东西别被标签盖住）
 (() => {
   const ID = "__evidence_marks"
   const TONES = { bad: "#e5484d", ok: "#30a46c", ref: "#3e63dd" }
@@ -40,7 +40,7 @@
         root.appendChild(tag)
         const w = tag.offsetWidth
         const above = r.y - pad - 24
-        tag.style.top = `${above >= 0 ? above : r.y + r.height + pad + 2}px`
+        tag.style.top = `${above >= 0 && !item.below ? above : r.y + r.height + pad + 2}px`
         tag.style.left = `${Math.min(Math.max(0, r.x - pad), innerWidth - w - 4)}px`
       })
     })

@@ -23,11 +23,12 @@
     const wide = scrollers.filter(el => el.scrollWidth > el.clientWidth + 1);
     out.push(pageWide ? `✗ 横向溢出：整页宽 ${doc.documentElement.scrollWidth}，窗口 ${doc.documentElement.clientWidth}` : wide.length ? `△ 横向溢出：整页没有；${wide.length} 个区域能横向滚：${wide.slice(0, 3).map(name).join('，')}` : '✓ 横向溢出：没有');
 
-    // 3. 「·」分隔。
-    const dots = [];
+    // 3. 「·」分隔。规矩管的是界面自己拿「·」隔开内容；Fluid .typeset 里排的是文章原文（人名里的间隔号、原站页脚），原文是来源事实、不能改，单列出来不算错
+    const dots = [], quoted = [];
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-    for (let n; (n = walker.nextNode());) if (n.textContent.includes('·')) dots.push(n.textContent.trim().slice(0, 20));
-    out.push(dots.length ? `✗ 「·」：${dots.length} 处，例：${dots.slice(0, 3).join(' / ')}` : '✓ 「·」：没有');
+    for (let n; (n = walker.nextNode());) if (n.textContent.includes('·')) (n.parentElement?.closest('.typeset') ? quoted : dots).push(n.textContent.trim().slice(0, 20));
+    const quotedNote = quoted.length ? `（另有 ${quoted.length} 处在 .typeset 排的文章原文里，不算）` : '';
+    out.push(dots.length ? `✗ 「·」：${dots.length} 处，例：${dots.slice(0, 3).join(' / ')}${quotedNote}` : `✓ 「·」：界面里没有${quotedNote}`);
 
     // 4. 固定的表头、栏头被滚上来的内容盖住（组件里的 z-index 互相打架时会这样）。
     const covered = [];
@@ -120,7 +121,9 @@
       for (const [x, y] of pts) {
         if (y < 0 || y > win.innerHeight || x < 0 || x > win.innerWidth) continue;
         const hit = doc.elementFromPoint(x, y);
-        if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)) { cut.push(`${name(el)} 被 ${name(hit)} 盖住`); break; }
+        // 浏览器插件往 body 里塞的空壳（0×0、内容在封闭的 shadow 里）会抢走点位，它不是页面的东西、本身也画不出来，不算盖住
+        const ghost = hit && hit.parentElement === doc.body && !hit.getBoundingClientRect().width && !hit.getBoundingClientRect().height && !hit.attributes.length;
+        if (hit && !ghost && hit !== el && !el.contains(hit) && !hit.contains(el)) { cut.push(`${name(el)} 被 ${name(hit)} 盖住`); break; }
       }
       for (let a = el.parentElement; a && a !== doc.body; a = a.parentElement) {
         const o = css(a).overflowX + css(a).overflowY;
@@ -160,14 +163,23 @@
     const backdrop = el => { const layers = []; for (let a = el.parentElement; a; a = a.parentElement) { const b = css(a).backgroundColor; if (!clear(b)) layers.push(b); } return layers.reverse().reduce((acc, b) => over(b, acc), 'rgb(255, 255, 255)'); };
     const levels = (a, b) => { const x = a.match(/\d+/g).map(Number), y = b.match(/\d+/g).map(Number); return Math.max(...[0, 1, 2].map(i => Math.abs(x[i] - y[i]))); };
     const lstar = c => { const [r, gg, b] = c.match(/\d+/g).slice(0, 3).map(v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); const y = 0.2126 * r + 0.7152 * gg + 0.0722 * b; return y > 216 / 24389 ? 116 * Math.cbrt(y) - 16 : (24389 / 27) * y; };
-    const apart = (hover, picked, base, only = false) => { const d = Math.abs(lstar(hover) - lstar(picked)), e = Math.abs(lstar(hover) - lstar(base)); return { ok: d >= 3 && d >= (only ? 2 : 0.8) * e, text: `明度差 ${d.toFixed(1)}，离原本底色 ${e.toFixed(1)}${only ? '，字一样深一样粗' : ''}` }; };
+    // 字也变了（Fluid 卡片选中时标题加粗）底色差 2.5 就够：Fluid 官网卡片演示指着 4% 黑、选中 7% 黑，差 2.8（2026-11-24 实测）
+    const apart = (hover, picked, base, only = false) => { const d = Math.abs(lstar(hover) - lstar(picked)), e = Math.abs(lstar(hover) - lstar(base)); return { ok: d >= (only ? 3 : 2.5) && d >= (only ? 2 : 0.8) * e, text: `明度差 ${d.toFixed(1)}，离原本底色 ${e.toFixed(1)}${only ? '，字一样深一样粗' : ''}` }; };
     const translucent = c => over(c, 'rgb(0, 0, 0)') !== over(c, 'rgb(255, 255, 255)');
     // 一项里字最多的那层，看它的字色和字重；指着的规则先贴到这一项上，字色是继承来的也算进去
-    const mainText = el => [el, ...el.querySelectorAll('*')].map(e => [e, [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join('').length]).sort((a, b) => b[1] - a[1])[0][0];
+    // 跳过看不见的字：Fluid 的「幽灵字」是一份隐藏的加粗副本，只占宽度
+    const mainText = el => [el, ...el.querySelectorAll('*')].filter(e => e === el || css(e).visibility !== 'hidden').map(e => [e, [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join('').length]).sort((a, b) => b[1] - a[1])[0][0];
     const inkOf = (el, rules) => {
       const keep = el.getAttribute('style');
       if (rules) { el.style.setProperty('transition', 'none', 'important'); for (const st of rules) for (let i = 0; i < st.length; i++) el.style.setProperty(st[i], st.getPropertyValue(st[i]), st.getPropertyPriority(st[i])); }
-      const s = css(mainText(el)), v = { color: over(s.color, 'rgb(255, 255, 255)'), weight: Number(s.fontWeight) || 400 };
+      // 卡片的点击层是一块没字的按钮盖在上面：往上找到带字的那一层再量（Fluid Card 2026-11-24）
+      // 往上找时取字号最大的那行（卡片的标题，选中时它变粗；一样大取最前面的），不取最长的灰色说明，也不取标题上面的小标签
+      const first = a => [a, ...a.querySelectorAll('*')].filter(e => css(e).visibility !== 'hidden' && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())).sort((x, y) => parseFloat(css(y).fontSize) - parseFloat(css(x).fontSize))[0];
+      let t = mainText(el);
+      for (let a = el; !t.textContent.trim() && a.parentElement && a.parentElement !== doc.body; a = a.parentElement) t = first(a.parentElement) || t;
+      // Fluid 加粗靠字体的 wght 轴（font-variation-settings），font-weight 一直是 400，两样都读
+      const s = css(t), wght = /"wght"\s+(\d+(?:\.\d+)?)/.exec(s.fontVariationSettings);
+      const v = { color: over(s.color, 'rgb(255, 255, 255)'), weight: wght ? Number(wght[1]) : Number(s.fontWeight) || 400 };
       if (rules) { if (keep === null) el.removeAttribute('style'); else el.setAttribute('style', keep); }
       return v;
     };
@@ -367,9 +379,21 @@
     if (loose.length) out.push(`△ 同一排里带字的按钮和图标钮不一样高，人眼看是不是该一样：${loose.slice(0, 4).join('，')}`);
 
     // 13. 行尾操作平时藏着（2026-11-24 资讯订阅左栏渠道行的「＋」一直露着）：Fluid 侧栏的 SidebarMenuAction 要写 showOnHover，指着那一行才出。
-    // 真要常驻的，在检查记录里写清为什么。
-    const resting = [...doc.querySelectorAll('[data-sidebar="menu-action"]')].filter(el => visible(el) && !el.closest('[data-sidebar="menu-item"], [data-sidebar="menu-sub-item"]')?.matches(':hover, :focus-within') && Number(css(el).opacity) > 0.5 && !el.hasAttribute('data-show-on-hover'));
-    out.push(resting.length ? `✗ 行尾操作一直露着：${resting.length} 个，例：${resting.slice(0, 3).map(el => el.getAttribute('aria-label') || name(el)).join('，')}（侧栏写 showOnHover）` : '✓ 行尾操作：没有一直露着的');
+    // 真要常驻的，在检查记录里写清为什么。手机宽度（Fluid 侧栏 768 以下变抽屉）和没有指针悬停的设备照 shadcn 侧栏原版一直露着，不算。
+    const touch = doc.documentElement.clientWidth < 768 || win.matchMedia('(hover: none)').matches;
+    const resting = touch ? [] : [...doc.querySelectorAll('[data-sidebar="menu-action"]')].filter(el => visible(el) && !el.closest('[data-sidebar="menu-item"], [data-sidebar="menu-sub-item"]')?.matches(':hover, :focus-within') && Number(css(el).opacity) > 0.5 && !el.hasAttribute('data-show-on-hover'));
+    out.push(touch ? '✓ 行尾操作：手机宽度，照 Fluid 原版一直露着，不查' : resting.length ? `✗ 行尾操作一直露着：${resting.length} 个，例：${resting.slice(0, 3).map(el => el.getAttribute('aria-label') || name(el)).join('，')}（侧栏写 showOnHover）` : '✓ 行尾操作：没有一直露着的');
+
+    // 14. 提示框挂在侧栏行的按钮上（2026-11-24 资讯订阅右栏「其他报道」）：Fluid 侧栏见到行按钮带 data-popup-open 就当成弹出菜单开着，
+    // 提示一开整个侧栏的悬停底色都冻在原地，指针移到别的行，底色和深色字还留在上一行。提示挂到整行（SidebarMenuItem）上；行尾操作的提示是 Fluid 自己的做法，不算。
+    const tipped = [...doc.querySelectorAll('[data-sidebar="menu-button"], [data-sidebar="menu-sub-button"]')].filter(el => el.hasAttribute('data-base-ui-tooltip-trigger') || /^(delayed|instant)-open$|^closed$/.test(el.getAttribute('data-state') || '') && el.matches('[data-slot="tooltip-trigger"]'));
+    out.push(tipped.length ? `✗ 提示挂在侧栏行的按钮上：${tipped.length} 行，例：${tipped.slice(0, 3).map(el => label(el).slice(0, 12) || name(el)).join('，')}（提示一开整栏悬停冻住，挂到 SidebarMenuItem 上）` : '✓ 侧栏行的提示：没有挂在行按钮上的');
+
+    // 15. 时间被省略号截掉（2026-11-24 资讯订阅搜索面板「小食代 2026年11…」、热点报道行长日期压住标题）：行尾的时间、日期要按自己的宽度占位（shrink-0），
+    // 截的是标题、来源名。打了省略号、字没放下，而且字的结尾是时间或日期的，都算。
+    const DATE_END = /(\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}月\d{1,2}日|\d{1,2}:\d{2}|昨天|前天)(周[一二三四五六日])?$/;
+    const cutTimes = [...doc.querySelectorAll('*')].filter(el => visible(el) && css(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && DATE_END.test(el.textContent.trim()));
+    out.push(cutTimes.length ? `✗ 时间被省略号截掉：${cutTimes.length} 处，例：${cutTimes.slice(0, 3).map(el => `「${el.textContent.trim().slice(-14)}」`).join('，')}（时间单拎出来 shrink-0，截前面的标题、来源）` : '✓ 时间：没有被省略号截掉的');
   }
   return out.join('\n');
 })();
