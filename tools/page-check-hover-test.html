@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- page-check.js 第 6 项的测试页：本机起个服务打开它，跑 page-check.js，左边 80ms 的列表不该报，右边 800ms 的要报「还没滑到」。 -->
+<html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{font:14px sans-serif;margin:24px;display:flex;gap:48px}
+.list{position:relative;display:flex;flex-direction:column;width:200px}
+.list button{position:relative;z-index:1;height:32px;border:0;background:none;text-align:left}
+.hl{position:absolute;left:0;top:0;width:200px;height:32px;background:#eee;pointer-events:none;opacity:0}
+#fast .hl{transition:transform 80ms ease-out,opacity 80ms}
+#slow .hl{transition:transform 800ms ease-out,opacity 80ms}
+</style></head><body>
+<div class="list" id="fast"><div class="hl"></div><button>一</button><button>二</button><button>三</button><button>四</button><button>五</button><button>六</button></div>
+<div class="list" id="slow"><div class="hl"></div><button>一</button><button>二</button><button>三</button><button>四</button><button>五</button><button>六</button></div>
+<script>
+for (const list of document.querySelectorAll('.list')) {
+  const hl = list.querySelector('.hl');
+  list.querySelectorAll('button').forEach(b => {
+    b.addEventListener('mouseover', () => { hl.style.opacity = 1; hl.style.transform = `translateY(${b.offsetTop}px)`; });
+  });
+  list.addEventListener('mouseleave', () => { hl.style.opacity = 0; });
+}
+</script></body></html>
