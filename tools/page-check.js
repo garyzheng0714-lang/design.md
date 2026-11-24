@@ -607,6 +607,36 @@
       }
       out.push(small.length ? `✗ 正文里有段落比正文小：${small.length} 段，例：${small.slice(0, 2).join('，')}（对照的原文、引文都和正文同一个字号，靠颜色分主次）` : '✓ 正文字号：段落都和正文一样大');
     }
+
+    // 27. 文章原文的图被加了框或底色（2026-11-24 资讯订阅阅读器：正文图统一加了灰底和 10% 细框，透明的章节号「03」、白底刊头都成了一个个方块，用户截图「03」）：
+    // .typeset、文章正文里的图是原文内容，照原样摆，不加 outline、边框、阴影和底色；圆角可以有。
+    {
+      const framed = [];
+      for (const img of doc.querySelectorAll('.typeset img, .article-body img')) {
+        if (!visible(img) || img.closest('.not-typeset')) continue;
+        const c = css(img), r = img.getBoundingClientRect();
+        if (r.width < 48) continue;
+        const ink = (c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) > 0) || parseFloat(c.borderTopWidth) > 0 || c.boxShadow !== 'none' || !/rgba\(0, 0, 0, 0\)|transparent/.test(c.backgroundColor);
+        if (ink) framed.push(`${Math.round(r.width)}×${Math.round(r.height)}`);
+      }
+      out.push(framed.length ? `✗ 原文的图被加了框或底色：${framed.length} 张，例：${framed.slice(0, 3).join('，')}（透明图、白底图会变成方块；原文的图照原样摆）` : '✓ 原文的图：没有加框和底色');
+    }
+
+    // 28. 长文正文字太小、颜色发灰（2026-11-24 资讯订阅阅读器：文章正文用了 Fluid .typeset 默认的 13 号灰字，用户「正文的字有点小」「颜色也怪」，旧版是 16/26 正文色）：
+    // .typeset 里有 6 段以上、平均每段 60 字以上就当长文读，正文不小于 15px，颜色要用正文色（和小标题一样深），不用说明文字的灰。
+    {
+      const weak = [];
+      for (const root of doc.querySelectorAll('.typeset, .article-body')) {
+        if (!visible(root) || root.parentElement?.closest('.typeset, .article-body')) continue;
+        const ps = [...root.querySelectorAll('p')].filter(p => visible(p) && !p.closest('figure, aside, blockquote, .not-typeset') && p.textContent.trim().length >= 20);
+        if (ps.length < 6 || ps.reduce((n, p) => n + p.textContent.trim().length, 0) / ps.length < 60) continue;
+        const c = css(ps[0]), fs = parseFloat(c.fontSize);
+        const lum = col => { const m = col.match(/[\d.]+/g).map(Number); return m.length >= 3 ? (m[0] + m[1] + m[2]) / 3 : 0; };
+        const fg = css(doc.body).color, muted = lum(c.color) - lum(fg) > 40;
+        if (fs < 15 || muted) weak.push(`${fs}px ${c.color}「${ps[0].textContent.trim().slice(0, 10)}」`);
+      }
+      out.push(weak.length ? `✗ 长文正文太小或发灰：${weak.slice(0, 2).join('，')}（长文正文不小于 15px、用正文色）` : '✓ 长文正文：字号和颜色够读');
+    }
   }
   return out.join('\n');
 })();
