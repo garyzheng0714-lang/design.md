@@ -4,6 +4,8 @@
 (async () => {
   const docs = [document, ...[...document.querySelectorAll('iframe')].map(f => { try { return f.contentDocument; } catch { return null; } }).filter(Boolean)];
   const out = [];
+  // 透明的挡板（Fluid 弹层开着时铺满全屏、只拦点击的 popup-shield，背景 rgba(0,0,0,0)、没字没边没影）什么都不画，挡在上面不算盖住（2026-11-24 FBIF-电脑端群发工具会话报的误报）
+  const paintsNothing = el => { const c = getComputedStyle(el); return !el.textContent.trim() && !el.querySelector('img, svg, video, canvas') && c.backgroundColor === 'rgba(0, 0, 0, 0)' && c.backgroundImage === 'none' && c.boxShadow === 'none' && !parseFloat(c.borderTopWidth) && !parseFloat(c.borderBottomWidth) && !parseFloat(c.borderLeftWidth) && !parseFloat(c.borderRightWidth) && c.outlineStyle === 'none'; };
   const name = el => (el.id ? `#${el.id}` : el.tagName.toLowerCase()) + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '');
   const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
@@ -58,7 +60,7 @@
         if (!r.width || !r.height) continue;
         for (let x = r.left + 4; x < r.right; x += 8) {
           const hit = doc.elementFromPoint(x, r.top + r.height / 2);
-          if (!hit || hit === sc || st.contains(hit) || !sc.contains(hit)) continue;
+          if (!hit || hit === sc || st.contains(hit) || !sc.contains(hit) || paintsNothing(hit)) continue;
           const over = frozenBy(hit);
           if (over && !atTop(st) && atTop(over)) continue;
           covered.push(`${name(st)} 被 ${name(hit)} 盖住`); break;
@@ -139,7 +141,7 @@
         const ghost = hit && hit.parentElement === doc.body && !hit.getBoundingClientRect().width && !hit.getBoundingClientRect().height && !hit.attributes.length;
         // 弹层里行的底色被它所在滚动区自己画的滚动条盖住：Fluid 官网 CommandMenu 一样（滚动条平时透明，指着、滚动时才出来），组件原样不改
         const ownBar = hit && inPopup(el) && hit.closest('[data-orientation="vertical"], [class*="group/scrollbar"]');
-        if (hit && !ghost && !ownBar && hit !== el && !el.contains(hit) && !hit.contains(el)) { cut.push(`${name(el)} 被 ${name(hit)} 盖住`); break; }
+        if (hit && !ghost && !ownBar && !paintsNothing(hit) && hit !== el && !el.contains(hit) && !hit.contains(el)) { cut.push(`${name(el)} 被 ${name(hit)} 盖住`); break; }
       }
       for (let a = el.parentElement; a && a !== doc.body; a = a.parentElement) {
         const o = css(a).overflowX + css(a).overflowY;
@@ -340,6 +342,9 @@
         if (o === 'hidden' || o === 'clip' || o === 'auto' || o === 'scroll') break;
       }
       if (!a || a === doc.documentElement || /(auto|scroll)/.test(css(a).overflowY)) continue;
+      // 只给读屏读的字（sr-only：收成 1px、整块裁掉，比如表格里开关的「取消订阅 某某」）本来就看不见，不算
+      const srOnly = e => { const r = e.getBoundingClientRect(), c = css(e); return (r.width <= 1 && r.height <= 1) || c.clip === 'rect(0px, 0px, 0px, 0px)' || c.clipPath === 'inset(50%)'; };
+      if (srOnly(a) || srOnly(el)) continue;
       const box = a.getBoundingClientRect(), m = parseFloat(css(a).overflowClipMargin) || 0, size = parseFloat(css(el).fontSize) || 14;
       const range = doc.createRange();
       range.selectNodeContents(n);
@@ -422,6 +427,72 @@
     const skelOf = el => [...el.children].find(c => c.getAttribute('aria-hidden') === 'true' || c.matches('[data-slot="skeleton"], [data-sidebar="menu-skeleton"]'));
     const tall = swaps.filter(el => el.children.length === 2 && skelOf(el)).map(el => { const sk = skelOf(el), real = [...el.children].find(c => c !== sk); return [el, Math.round(sk.getBoundingClientRect().height - real.getBoundingClientRect().height)]; }).filter(([, d]) => d > 2);
     out.push(crowded.length ? `✗ 骨架叠成一格：${crowded.length} 处 reveal-swap 里放了 ${crowded[0].children.length} 块（一格只放一块骨架、一块真内容，多行骨架先包成一块）` : tall.length ? `✗ 骨架比真内容高：${tall.length} 处，例：${tall.slice(0, 3).map(([el, d]) => `${name(el)} 高出 ${d}px`).join('，')}（骨架照真内容的行数、行高、行距做）` : `✓ 骨架：${swaps.length} 处 reveal-swap，没有叠成一格或比真内容高的`);
+
+    // 17. 表格行被格子里的控件撑高（2026-11-24 资讯订阅后台来源表：「订阅」开关 36 高、头像 24 高把每行撑到 53，Fluid 表格的骨架行是 37，数据一到整表一帧跳 800px）：
+    // 照 Fluid DataTable 的选择框格，高过一行字的控件、头像、徽标用负的上下外边距伸进格子的留白，不撑行。整行每格都只有一行字、行却比「上下留白 + 一行字」高的，算被撑高。
+    const textLines = td => { const tops = new Set(); const w = doc.createTreeWalker(td, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { if (!n.textContent.trim()) continue; const r = doc.createRange(); r.selectNodeContents(n); for (const rc of r.getClientRects()) if (rc.height) tops.add(Math.round(rc.top / 6)); } return tops.size; };
+    const stretched = [];
+    for (const table of doc.querySelectorAll('table')) {
+      if (!visible(table)) continue;
+      const tr = [...table.querySelectorAll('tbody tr')].find(r => r.getAttribute('aria-hidden') !== 'true' && r.children.length > 1);
+      if (!tr) continue;
+      const cells = [...tr.children];
+      if (cells.some(td => textLines(td) > 1)) continue;
+      const c = css(cells[0]);
+      const one = parseFloat(c.paddingTop) + parseFloat(c.paddingBottom) + (parseFloat(c.lineHeight) || 20) + parseFloat(c.borderTopWidth) + parseFloat(c.borderBottomWidth);
+      const h = tr.getBoundingClientRect().height;
+      if (h > one + 2) stretched.push(`${name(table)} 每行 ${Math.round(h)}px（一行字该是 ${Math.round(one)}）`);
+    }
+    out.push(stretched.length ? `✗ 表格行被控件撑高：${stretched.join('，')}（开关、头像、徽标用负的上下外边距伸进格子留白，照 Fluid 表格的选择框格）` : '✓ 表格行高：没有被格子里的控件撑高的');
+
+    // 18. 截断的字指上去看不到全文（2026-11-24 资讯订阅独立审查：右栏目录、热点事件行、报道子行打了省略号，指上去什么都不出）：
+    // 设计总纲《文字排版》「电脑上悬停能看到全文」。打了省略号、字没放下的，往上几层要有提示（Fluid Tooltip 的触发元素）。
+    const cutNoTip = [...doc.querySelectorAll('*')].filter(el => visible(el) && css(el).visibility !== 'hidden' && css(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && el.textContent.trim() && !el.closest('[data-base-ui-tooltip-trigger], [data-state][data-slot="tooltip-trigger"], [title], [aria-describedby]'));
+    out.push(cutNoTip.length ? `✗ 截断了看不到全文：${cutNoTip.length} 处，例：${cutNoTip.slice(0, 3).map(el => `「${el.textContent.trim().slice(0, 12)}…」`).join('，')}（被截断时挂 Fluid Tooltip 写出全文，照 Fluid 面包屑：截了才出）` : '✓ 截断：打了省略号的都能指上去看全文');
+
+    // 19. 浮层压在滚动条上（2026-11-24 资讯订阅独立审查：正文滚动条的滑块在右栏浮卡底下，x1453–1457，浮卡右边在 1454）：
+    // 会滚的区域右边那条轨道（10px）上，不能被不属于它的东西盖住；浮在上面的卡片离右边至少让出轨道。
+    // 浏览器插件挂在页面上的按钮（沉浸式翻译之类）不算页面的浮层：它们放在 shadow DOM 里，或者 id、class 带插件名
+    const fromExtension = el => { for (let e = el; e && e !== doc.body; e = e.parentElement) if (e.shadowRoot || /^(immersive-translate|grammarly|monica|sider)/i.test(e.id || String(e.className))) return true; return false; };
+    const trackCovered = [];
+    for (const sc of doc.querySelectorAll('*')) {
+      const st = css(sc);
+      if (!/(auto|scroll)/.test(st.overflowY) || sc.scrollHeight <= sc.clientHeight + 1 || !visible(sc)) continue;
+      const r = sc.getBoundingClientRect();
+      if (r.height < 80) continue;
+      const root = sc.parentElement?.parentElement || sc;
+      for (let y = r.top + 20; y < r.bottom - 20; y += 40) {
+        const hit = doc.elementFromPoint(r.right - 5, y);
+        if (hit && !root.contains(hit) && !hit.contains(sc) && !fromExtension(hit) && !paintsNothing(hit)) { trackCovered.push(`${name(sc)} 的轨道被 ${name(hit)} 盖住（y${Math.round(y)}）`); break; }
+      }
+    }
+    out.push(trackCovered.length ? `✗ 浮层压在滚动条上：${trackCovered.slice(0, 3).join('，')}（浮层离滚动区右边让出轨道）` : '✓ 滚动条轨道：没有被浮层盖住的');
+
+    // 20. 日期被中英文自动留空拆开（2026-11-24 资讯订阅：整页开了 text-autospace，AI 摘要写成「11 月 25 日至 30 日」，公众号正文把「11」「月」「22」「日」各放一个小标签，写成「11月 22 日」）：
+    // 设计总纲《文字排版》：中文和英文、数字之间留空，日期和时间不算在内。同一段的字连起来找年月日、几点几分，每一小块所在的元素都得是 text-autospace: no-autospace（或者字里插了不可见连字符 U+2060，那样认不出日期，自然不算）。
+    if (CSS.supports('text-autospace', 'normal')) {
+      const DATE = /(?<![\d.])(?:\d{4}年(?:\d{1,2}月(?:\d{1,2}日)?)?|\d{1,2}月(?:\d{1,2}日)?|\d{1,2}日(?![元币])|\d{1,2}[点時时](?:\d{1,2}分)?)/g;
+      const BLOCK = 'p, div, li, h1, h2, h3, h4, h5, h6, section, blockquote, td, th, figcaption, dd, dt, table, button, a, label';
+      const groups = new Map();
+      const tw = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+      for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+        const p = n.parentElement;
+        if (!p || !/\d/.test(n.data) && !/[年月日点時时分]/.test(n.data) || p.closest('script, style, code, pre, input, textarea') || !visible(p)) continue;
+        const b = p.closest(BLOCK) || doc.body;
+        if (!groups.has(b)) groups.set(b, []);
+        groups.get(b).push(n);
+      }
+      const split = [];
+      for (const nodes of groups.values()) {
+        const joined = nodes.map(n => n.data).join('');
+        for (const m of joined.matchAll(DATE)) {
+          let at = 0, spaced = false;
+          for (const n of nodes) { const from = at, to = (at += n.data.length); if (m.index < to && m.index + m[0].length > from && css(n.parentElement).textAutospace !== 'no-autospace') spaced = true; }
+          if (spaced) split.push(m[0]);
+        }
+      }
+      out.push(split.length ? `✗ 日期被自动留空拆开：${split.length} 处，例：${[...new Set(split)].slice(0, 4).map(t => `「${t}」`).join('，')}（日期包进 time 或 no-autospace 的标签；只收纯文字的组件在数字和字之间插 U+2060）` : '✓ 日期：开着自动留空，没有被拆开的');
+    } else out.push('✓ 日期：这个浏览器不支持 text-autospace，不会被拆开');
   }
   return out.join('\n');
 })();
