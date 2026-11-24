@@ -35,12 +35,18 @@
       const top = sc.scrollTop;
       sc.scrollTop = (sc.scrollHeight - sc.clientHeight) / 2;
       await frame();
+      // 只往左右冻结的格子（表格冻结的第一列）滚到顶上冻结的表头底下，本来就该被表头盖住，不算
+      const frozenBy = el => { for (let e = el; e && e !== sc; e = e.parentElement) if (css(e).position === 'sticky') return e; return null; };
+      const atTop = el => css(el).top !== 'auto';
       for (const st of [...sc.querySelectorAll('*')].filter(el => css(el).position === 'sticky')) {
         const r = st.getBoundingClientRect();
         if (!r.width || !r.height) continue;
         for (let x = r.left + 4; x < r.right; x += 8) {
           const hit = doc.elementFromPoint(x, r.top + r.height / 2);
-          if (hit && hit !== sc && !st.contains(hit) && sc.contains(hit)) { covered.push(`${name(st)} 被 ${name(hit)} 盖住`); break; }
+          if (!hit || hit === sc || st.contains(hit) || !sc.contains(hit)) continue;
+          const over = frozenBy(hit);
+          if (over && !atTop(st) && atTop(over)) continue;
+          covered.push(`${name(st)} 被 ${name(hit)} 盖住`); break;
         }
       }
       sc.scrollTop = top;

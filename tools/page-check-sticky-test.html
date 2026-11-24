@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- page-check.js 第 4 项的测试页：本机起个服务打开它，跑 page-check.js。左表冻结了表头和第一列，第一列滚到表头底下被盖住是对的，不该报；右表正文压在表头上面，要报「固定表头被盖」。 -->
+<html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{font:14px sans-serif;margin:24px;display:flex;gap:48px}
+.box{height:200px;width:260px;overflow:auto;border:1px solid #ddd}
+table{border-collapse:collapse;width:400px}
+th,td{height:32px;padding:0 8px;text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:#f4f4f4;z-index:2}
+#ok td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+#bad td span{display:block;line-height:32px;position:relative;z-index:5;background:#fee}
+</style></head><body>
+<div class="box" id="ok"><table><thead><tr><th>名字</th><th>公司</th><th>职位</th></tr></thead><tbody></tbody></table></div>
+<div class="box" id="bad"><table><thead><tr><th>名字</th><th>公司</th><th>职位</th></tr></thead><tbody></tbody></table></div>
+<script>
+for (const tb of document.querySelectorAll('tbody')) tb.innerHTML = Array.from({ length: 30 }, (_, i) => `<tr><td><span>嘉宾 ${i + 1}</span></td><td>测试公司</td><td>总监</td></tr>`).join('');
+</script></body></html>
