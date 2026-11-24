@@ -102,7 +102,8 @@
     const cut = [];
     const clear = c => c === 'rgba(0, 0, 0, 0)' || c === 'transparent';
     // 收起的下拉里也有「选中」的选项，看不见的不算
-    const marked = all.filter(el => el.matches('[data-selected],[aria-pressed="true"],[aria-current]:not([aria-current="false"]),[aria-selected="true"]') && el.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+    // 现查，不用开头存下的 all：上面第 4 项把滚动区滚到中间再滚回来，虚拟列表会把行换成新节点
+    const marked = [...doc.querySelectorAll('[data-selected],[aria-pressed="true"],[aria-current]:not([aria-current="false"]),[aria-selected="true"]')].filter(el => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
     // 每个都先像键盘移过去那样滚进视野（nearest），再看四条边；查完滚回原处
     const scrolled = el => { const keep = []; for (let a = el.parentElement; a; a = a.parentElement) keep.push([a, a.scrollTop, a.scrollLeft]); return keep; };
     for (const el of marked) {
@@ -225,7 +226,7 @@
     };
     const blur = [];
     let paired = 0;
-    for (const S of all.filter(el => el.matches(SEL) && el.checkVisibility({ opacityProperty: true, visibilityProperty: true }))) {
+    for (const S of [...doc.querySelectorAll(SEL)].filter(el => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }))) {
       const P = layerOf(S);
       if (!P) continue;
       let I = S;
@@ -239,10 +240,11 @@
       for (let a = S; a !== I; a = a.parentElement) path.unshift([...a.parentElement.children].indexOf(a));
       const C = path.reduce((c, i) => c?.children[i], N) || T;
       paired++;
-      T.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true, relatedTarget: doc.body }));
-      await frame();
+      // Fluid 的悬停底色按 mousemove 的坐标认行，带坐标发，等弹簧走完再量
+      move(T, doc.body);
+      await new Promise(r => setTimeout(r, 300));
       const tr = T.getBoundingClientRect(), cx = tr.left + tr.width / 2, cy = tr.top + tr.height / 2;
-      const M = [...I.parentElement.querySelectorAll('*')].find(el => { const s = css(el), r = el.getBoundingClientRect(); return s.pointerEvents === 'none' && !clear(s.backgroundColor) && Number(s.opacity) > 0.1 && r.height > 8 && r.left <= cx && cx <= r.right && r.top <= cy && cy <= r.bottom; });
+      const M = [...I.parentElement.querySelectorAll('*')].find(el => { const s = css(el), r = el.getBoundingClientRect(); return s.pointerEvents === 'none' && !clear(s.backgroundColor) && Number(s.opacity) > 0.1 && r.height > 8 && r.width >= tr.width * 0.5 && r.left <= cx && cx <= r.right && r.top <= cy && cy <= r.bottom; });
       const sel = looks(P, null);
       const ST = S.matches(ITEM) ? S : S.querySelector(ITEM) || S;
       if (M) {
@@ -250,6 +252,11 @@
         if (!a.ok) blur.push(`${name(S)} 和指着的 ${name(T)} 底色分不清（${a.text}）`);
         const rm = parseFloat(css(M).borderTopLeftRadius), rp = parseFloat(css(P).borderTopLeftRadius);
         if (Math.abs(rm - rp) > 1) blur.push(`${name(S)} 选中的圆角 ${rp}px、指着的 ${rm}px`);
+        // 两块底色挨着不留缝，看着像一大块（2026-11-24 资讯订阅列表卡片、演讲嘉宾名单各犯一次；Fluid CardGroup 用 separated 隔开 8px）
+        const mr = M.getBoundingClientRect(), pr = P.getBoundingClientRect();
+        const gx = Math.max(mr.left - pr.right, pr.left - mr.right), gy = Math.max(mr.top - pr.bottom, pr.top - mr.bottom);
+        const gap = Math.max(gx, gy);
+        if (gap < 2) blur.push(`${name(S)} 选中的底色和指着旁边一项的底色贴在一起（间隙 ${Math.max(0, Math.round(gap))}px）`);
       } else {
         const hov = looks(C, hoverRules(C)), still = looks(C, null);
         const a = apart(hov.bg, sel.bg, still.bg, sameInk(inkOf(C, hoverRules(C)), inkOf(ST, null)));
@@ -257,6 +264,7 @@
         if (!a.ok && score < 6) blur.push(`${name(S)} 选中的样子和指着别的项时差不多（底色${a.text}，边框和阴影 ${score} 分）`);
       }
       T.dispatchEvent(new win.MouseEvent('mouseout', { bubbles: true, relatedTarget: doc.body }));
+      I.parentElement.dispatchEvent(new win.MouseEvent('mouseleave', { bubbles: false }));
       if (M && ST !== T) {
         ST.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true, relatedTarget: doc.body }));
         await frame();
@@ -314,6 +322,54 @@
       }
     }
     out.push(sliced.length ? `✗ 字的上下被裁：${sliced.length} 处，例：${sliced.slice(0, 3).join('；')}` : `✓ 字的上下：${lines} 行裁切框里的字都完整`);
+
+    // 11. 滚动条压内容（2026-09-29、2026-11-24 资讯订阅列表各挨骂一次，同日演讲嘉宾名单又犯）：Mac 的滚动条、Fluid ScrollArea 自己画的滚动条都浮在内容上，
+    // 指着时变宽。列表里每一行（卡片、列表项、整行按钮）的右边都要让出滚动条的轨道：自己画的量轨道宽，原生浮动的按 12px 算。占位的经典滚动条不压内容，不查。
+    const pressed = [];
+    let rowsSeen = 0;
+    for (const sc of scrollers) {
+      if (!/(auto|scroll)/.test(css(sc).overflowY) || sc.scrollHeight <= sc.clientHeight + 1 || sc.offsetWidth - sc.clientWidth > 2) continue;
+      const vr = sc.getBoundingClientRect();
+      const strips = [...(sc.parentElement?.querySelectorAll('*') ?? [])].filter(t => !sc.contains(t) && (() => { const q = t.getBoundingClientRect(); return q.width > 0 && q.width < 24 && q.height > 40 && Math.abs(q.right - vr.right) < 2; })());
+      const track = strips.length ? Math.max(...strips.map(t => t.getBoundingClientRect().width)) : 12;
+      const rows = [...sc.querySelectorAll('[data-slot="card"], [data-fluid-hover-index], li, [role="option"], [role="row"], [role="treeitem"], button, a[href]')]
+        .filter(el => { const r = el.getBoundingClientRect(); return r.width > vr.width * 0.5 && r.bottom > vr.top && r.top < vr.bottom && el.checkVisibility({ opacityProperty: true, visibilityProperty: true }); });
+      rowsSeen += rows.length;
+      const worst = rows.reduce((m, el) => (el.getBoundingClientRect().right > m.right ? el.getBoundingClientRect() : m), { right: -Infinity });
+      const lap = worst.right - (vr.right - track);
+      if (lap > 0.5) pressed.push(`${name(sc)} 里的行伸进滚动条 ${Math.round(lap)}px（轨道 ${Math.round(track)}px 宽，行的右边离滚动区右边只有 ${Math.round(vr.right - worst.right)}px）`);
+    }
+    out.push(pressed.length ? `✗ 滚动条压内容：${pressed.slice(0, 3).join('；')}` : `✓ 滚动条压内容：${rowsSeen} 行都让出了滚动条`);
+
+    // 12. 同一排的图标钮一样大（2026-11-24 资讯订阅栏头：侧栏开关 36、旁边的筛选、复制链接 28）。只看栏头、工具条这种横排，列表行里的行尾钮不算。
+    // 只有图标没有字的按钮，按中线同高（差 4px 以内）归成一排，一排里高或图标大小不一样就算。带字的按钮高和它们不一样的列出来人眼看。
+    const visible = el => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && el.getBoundingClientRect().width > 0;
+    const inRow = el => el.closest('li, [role="row"], [role="option"], [role="treeitem"], [data-slot="card"], table, [data-sidebar="menu-item"], [data-sidebar="menu-sub-item"]');
+    const label = el => [...el.childNodes].map(n => (n.nodeType === 3 ? n.textContent : n.nodeType === 1 && !n.matches('svg, [class*="sr-only"]') ? n.textContent : '')).join('').trim();
+    const controls = [...doc.querySelectorAll('button, [role="button"], [role="combobox"], a[href]')].filter(el => visible(el) && !inRow(el));
+    const bands = [];
+    for (const el of controls) {
+      const r = el.getBoundingClientRect(), y = r.top + r.height / 2;
+      const band = bands.find(b => Math.abs(b.y - y) <= 4) || (bands.push({ y, items: [] }), bands.at(-1));
+      band.items.push(el);
+    }
+    const uneven = [], loose = [];
+    for (const b of bands) {
+      const icons = b.items.filter(el => el.querySelector('svg') && !label(el));
+      if (icons.length < 2) continue;
+      const hs = new Set(icons.map(el => Math.round(el.getBoundingClientRect().height)));
+      const gs = new Set(icons.map(el => Math.round(el.querySelector('svg').getBoundingClientRect().width)));
+      if (hs.size > 1 || gs.size > 1) uneven.push(`中线 y≈${Math.round(b.y)} 的一排：${icons.map(el => `${el.getAttribute('aria-label') || name(el)} ${Math.round(el.getBoundingClientRect().height)}/${Math.round(el.querySelector('svg').getBoundingClientRect().width)}`).join('，')}`);
+      const ih = Math.max(...hs);
+      for (const el of b.items.filter(e => label(e) && e.tagName !== 'A' && Math.abs(e.getBoundingClientRect().height - ih) > 1)) loose.push(`「${label(el).slice(0, 10)}」${Math.round(el.getBoundingClientRect().height)}（图标钮 ${ih}）`);
+    }
+    out.push(uneven.length ? `✗ 同一排图标钮大小不一（钮高/图标宽）：${uneven.slice(0, 3).join('；')}` : `✓ 同一排图标钮：${bands.filter(b => b.items.length > 1).length} 排都一样大`);
+    if (loose.length) out.push(`△ 同一排里带字的按钮和图标钮不一样高，人眼看是不是该一样：${loose.slice(0, 4).join('，')}`);
+
+    // 13. 行尾操作平时藏着（2026-11-24 资讯订阅左栏渠道行的「＋」一直露着）：Fluid 侧栏的 SidebarMenuAction 要写 showOnHover，指着那一行才出。
+    // 真要常驻的，在检查记录里写清为什么。
+    const resting = [...doc.querySelectorAll('[data-sidebar="menu-action"]')].filter(el => visible(el) && !el.closest('[data-sidebar="menu-item"], [data-sidebar="menu-sub-item"]')?.matches(':hover, :focus-within') && Number(css(el).opacity) > 0.5 && !el.hasAttribute('data-show-on-hover'));
+    out.push(resting.length ? `✗ 行尾操作一直露着：${resting.length} 个，例：${resting.slice(0, 3).map(el => el.getAttribute('aria-label') || name(el)).join('，')}（侧栏写 showOnHover）` : '✓ 行尾操作：没有一直露着的');
   }
   return out.join('\n');
 })();
