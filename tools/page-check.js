@@ -26,13 +26,16 @@
     // 滚动区只看它真能滚的方向；滚不动的方向要留 auto，不然 Chrome 里滚轮停在它上面传不到外层（第 29 项，2026-11-25 FBIF-合同盖章）。
     const canY = el => /(auto|scroll)/.test(css(el).overflowY) && el.scrollHeight > el.clientHeight + 1;
     const canX = el => /(auto|scroll)/.test(css(el).overflowX) && el.scrollWidth > el.clientWidth + 1;
+    // auto 也行，只要它到头把滚轮交给最近一层同方向能滚的外层、那一层是 none：回弹只出在连带滚动停下的那一层（2026-11-25 FBIF-合同盖章：上下叠时页面区滚到底接着滚整页，Codex 复查提的）
+    const chainsToNone = (el, can, prop) => { for (let p = el.parentElement; p; p = p.parentElement) if (can(p)) return css(p)[prop] === 'none'; return false; };
+    const axisBouncy = (el, can, prop) => can(el) && css(el)[prop] !== 'none' && !(css(el)[prop] === 'auto' && chainsToNone(el, can, prop));
     const bouncy = el => el === doc.documentElement || el === doc.body
       ? css(el).overscrollBehaviorY !== 'none' || css(el).overscrollBehaviorX !== 'none'
-      : (canY(el) && css(el).overscrollBehaviorY !== 'none') || (canX(el) && css(el).overscrollBehaviorX !== 'none');
+      : axisBouncy(el, canY, 'overscrollBehaviorY') || axisBouncy(el, canX, 'overscrollBehaviorX');
     const bounce = [doc.documentElement, doc.body, ...scrollers.filter(el => !inPopup(el))].filter(bouncy);
     const popupLoose = scrollers.filter(el => inPopup(el) && bouncy(el)).length;
     const popupNote = popupLoose ? `；另有 ${popupLoose} 个在 Fluid 弹层里，照组件原样 auto，不算` : '';
-    out.push(bounce.length ? `✗ 回弹：${bounce.length} 处不是 overscroll-behavior: none：${bounce.slice(0, 5).map(el => `${name(el)}（${css(el).overscrollBehaviorY}）`).join('，')}${popupNote}` : `✓ 回弹：html、body 和页面里的滚动区都是 none（触控板手感没实测）${popupNote}`);
+    out.push(bounce.length ? `✗ 回弹：${bounce.length} 处不是 overscroll-behavior: none：${bounce.slice(0, 5).map(el => `${name(el)}（${css(el).overscrollBehaviorY}）`).join('，')}${popupNote}` : `✓ 回弹：html、body 和页面里的滚动区都是 none 或连带给 none 的外层（触控板手感没实测）${popupNote}`);
 
     // 2. 横向溢出：整页不该横向滚；滚动区里的横向滚动列出来自己判断。
     const pageWide = doc.documentElement.scrollWidth > doc.documentElement.clientWidth + 1;
