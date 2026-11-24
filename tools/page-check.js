@@ -494,6 +494,115 @@
       }
       out.push(split.length ? `✗ 日期被自动留空拆开：${split.length} 处，例：${[...new Set(split)].slice(0, 4).map(t => `「${t}」`).join('，')}（日期包进 time 或 no-autospace 的标签；只收纯文字的组件在数字和字之间插 U+2060）` : '✓ 日期：开着自动留空，没有被拆开的');
     } else out.push('✓ 日期：这个浏览器不支持 text-autospace，不会被拆开');
+
+    const textRects = (el, skip) => { const w = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT), rs = []; for (let n = w.nextNode(); n; n = w.nextNode()) { if (!n.data.trim() || (skip && n.parentElement.closest(skip))) continue; const r = doc.createRange(); r.selectNodeContents(n); rs.push(...r.getClientRects()); } return rs.filter(r => r.width > 0); };
+
+    // 21. 行尾让位收不回来（2026-11-24 资讯订阅左栏：鼠标点过「微信公众号」、指针走开，箭头还缩在左边给「＋」让位）：Fluid 侧栏行里有焦点就一直让位（group-focus-within），
+    // 鼠标点一下按钮就留下焦点。挨个给带行尾操作的行按钮焦点（鼠标点过的样子，不显示焦点框），指针不在上面时右边距要回到静止值 --row-gutter；键盘 Tab 到（显示焦点框）照旧让位。
+    {
+      const gut = b => [parseFloat(css(b).getPropertyValue('--row-gutter')), parseFloat(css(b).getPropertyValue('--row-gutter-hover'))];
+      const rows = [...doc.querySelectorAll('[data-sidebar="menu-button"], [data-sidebar="menu-sub-button"]')].filter(b => { const [r, h] = gut(b); return visible(b) && r >= 0 && h > r; }).slice(0, 30);
+      const before = doc.activeElement, stuck = [];
+      let tried = 0;
+      for (const b of rows) {
+        if (b.closest('li')?.matches(':hover')) continue;
+        b.focus({ preventScroll: true, focusVisible: false });
+        if (b.matches(':focus-visible')) { b.blur(); continue; }
+        tried++;
+        await new Promise(r => setTimeout(r, 180));
+        if (Math.abs(parseFloat(css(b).paddingRight) - gut(b)[0]) > 1) stuck.push(b.textContent.trim().slice(0, 10));
+        b.blur();
+      }
+      before?.focus?.({ preventScroll: true });
+      out.push(stuck.length ? `✗ 行尾让位收不回来：${stuck.length} 行点过、指针走开后还在给行尾操作让位，例：${stuck.slice(0, 4).map(t => `「${t}」`).join('，')}（不指着、不是键盘焦点时回到 --row-gutter）`
+        : !rows.length ? '✓ 行尾让位：没有带行尾操作的侧栏行' : tried ? `✓ 行尾让位：${tried} 行点过、指针走开后都收回了` : '△ 行尾让位：浏览器把脚本给的焦点都当键盘焦点，先用鼠标点一下页面再跑');
+    }
+
+    // 22. 面包屑「›」两边不一样宽（2026-11-24 资讯订阅阅读器栏头「Foodnavigator ›   可口可乐…」，用户：看着难受吗？和谐吗）：Fluid 面包屑的分隔符长在前一节里，
+    // 后一节自己还带一份左边距，「›」右边比左边宽一倍。量分隔符的笔画到两边的字（或头像）的距离，差 3px 以上就算。
+    {
+      const lopsided = [];
+      for (const s of [...doc.querySelectorAll('[data-slot="breadcrumb-separator"]')].filter(visible)) {
+        const svg = s.querySelector('svg'), ink = (svg?.querySelector('path, polyline, line') ?? s).getBoundingClientRect();
+        const crumb = s.parentElement, next = crumb.closest('li')?.nextElementSibling;
+        const left = textRects(crumb, '[data-slot="breadcrumb-separator"]').filter(r => r.right <= ink.left + 1).pop();
+        const marks = next ? [...textRects(next), ...[...next.querySelectorAll('img, svg, [role="img"]')].filter(visible).map(e => e.getBoundingClientRect())] : [];
+        if (!left || !marks.length) continue;
+        const l = ink.left - left.right, r = Math.min(...marks.map(m => m.left)) - ink.right;
+        if (Math.abs(l - r) > 3) lopsided.push(`「${crumb.textContent.trim().slice(0, 8)} ›」左 ${Math.round(l)}、右 ${Math.round(r)}`);
+      }
+      out.push(lopsided.length ? `✗ 面包屑「›」两边不一样宽：${lopsided.slice(0, 3).join('，')}（后一节收回自己的左边距）` : '✓ 面包屑：「›」两边一样宽（或没有面包屑）');
+    }
+
+    // 23. 中文标题提前换行（2026-11-24 资讯订阅列表卡片：标题开了 text-wrap balance，窄栏里第一行只写到一半就折下来，用户：这个标题怎么突然就换行截断了？）：
+    // 中文每个字都能断，第二行开头是汉字、第一行末尾却空着 3 个字以上，就是被均衡、pretty 之类提前折了。查限了行数的字和标题。
+    {
+      const CJK = /[぀-ヿ㐀-鿿豈-﫿]/;
+      const early = [];
+      for (const el of [...doc.querySelectorAll('h1, h2, h3, h4, [class*="line-clamp"]')].filter(visible).slice(0, 80)) {
+        const w = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT), r = doc.createRange();
+        const box = el.getBoundingClientRect(), fs = parseFloat(css(el).fontSize), right = box.right - parseFloat(css(el).paddingRight);
+        let top = null, lineEnd = 0, found = null;
+        for (let n = w.nextNode(); n && !found; n = w.nextNode()) for (let i = 0; i < n.data.length; i++) {
+          r.setStart(n, i); r.setEnd(n, i + 1); const c = r.getClientRects()[0]; if (!c || !c.width) continue;
+          if (top === null) top = c.top;
+          if (c.top > top + fs / 2) { found = n.data[i]; break; }
+          lineEnd = c.right;
+        }
+        if (found && CJK.test(found) && right - lineEnd > 3 * fs) early.push(`「${el.textContent.trim().slice(0, 12)}」空 ${Math.round((right - lineEnd) / fs)} 字`);
+      }
+      out.push(early.length ? `✗ 中文标题提前换行：${early.length} 处，例：${early.slice(0, 3).join('，')}（中文标题不用 text-wrap balance、pretty）` : '✓ 换行：中文标题和限了行数的字没有提前折下来');
+    }
+
+    // 24. 一列卡片之间没有分隔（2026-11-24 资讯订阅列表：换成 Fluid 卡片后两篇之间只隔 8px 空白，旧版的通栏细线丢了，用户：资讯与资讯之间，为什么抛弃了之前的设计？）：
+    // 透明、无边框的卡片竖着排 3 张以上，相邻两张之间要有一样看得见的东西：细线（边框或 ::before、::after）、卡片自己的底色，或者 24px 以上的空。
+    {
+      const bare = [];
+      const paints = (el, pseudo) => { const c = win.getComputedStyle(el, pseudo); return (pseudo ? c.content !== 'none' : true) && c.display !== 'none' && (c.backgroundColor !== 'rgba(0, 0, 0, 0)' && (!pseudo || parseFloat(c.height) <= 2) || ['Top', 'Bottom'].some(k => parseFloat(c[`border${k}Width`]) > 0 && c[`border${k}Style`] !== 'none' && !c[`border${k}Color`].endsWith(', 0)'))); };
+      for (const g of doc.querySelectorAll('[data-slot="card-group"]')) {
+        const cards = [...g.querySelectorAll(':scope > [data-slot="card"], :scope > * > [data-slot="card"]')].filter(visible).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+        if (cards.length < 3) continue;
+        let pairs = 0, lined = 0;
+        for (let i = 0; i + 1 < cards.length; i++) {
+          const a = cards[i], b = cards[i + 1], ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+          if (Math.abs(ra.left - rb.left) > 2 || a.matches('[data-selected], [aria-selected="true"]') || b.matches('[data-selected], [aria-selected="true"]') || a.querySelector('[aria-pressed="true"]:not([data-slot] *)')) continue;
+          pairs++;
+          if (rb.top - ra.bottom >= 24 || [a, b].some(c => paints(c) || paints(c, '::after') || paints(c, '::before'))) lined++;
+        }
+        if (pairs && lined < pairs) bare.push(`${name(g)} ${pairs - lined}/${pairs} 对`);
+      }
+      out.push(bare.length ? `✗ 卡片之间没有分隔：${bare.slice(0, 2).join('，')}（相邻两张之间加细线，或者给卡片底色）` : '✓ 卡片分隔：一列卡片之间都有线、底色或足够的空');
+    }
+
+    // 25. 卡片里的缩略图圆角太小（2026-11-24 资讯订阅列表封面圆角 2，外面卡片、指着的底色是 12，用户：封面图的圆角不对）：
+    // 卡片、列表行里 48px 以上的图，圆角跟 Fluid 内层圆角（圆角模式 8）走，小于 6 就算；头像是圆的，不算。正文里的图是文章内容，不查。
+    {
+      const sharp = [];
+      for (const img of [...doc.querySelectorAll('img')].filter(visible)) {
+        const r = img.getBoundingClientRect();
+        if (r.width < 48 || r.height < 48 || !img.closest('[data-slot="card"], [role="option"], li') || img.closest('.typeset, .article-body, figure')) continue;
+        const clip = [img, img.parentElement, img.parentElement?.parentElement].filter(Boolean).map(e => parseFloat(css(e).borderTopLeftRadius) || 0);
+        const radius = Math.max(...clip);
+        if (radius < 6) sharp.push(`${Math.round(r.width)}×${Math.round(r.height)} 圆角 ${radius}`);
+      }
+      out.push(sharp.length ? `✗ 缩略图圆角太小：${sharp.length} 张，例：${sharp.slice(0, 3).join('，')}（用 Fluid 内层圆角 shape.bg）` : '✓ 缩略图圆角：卡片里的图都跟着内层圆角');
+    }
+
+    // 26. 正文里有段落比正文小（2026-11-24 资讯订阅阅读器中外对照：外文原文一段用了 12 号说明字，正文 13 号，用户：字怎么那么小）：
+    // .typeset、文章正文里，直接带字的段落都要和正文同一个字号；图注、表格、代码、上下标、时间不算。
+    {
+      const small = [];
+      for (const root of doc.querySelectorAll('.typeset, .article-body')) {
+        if (!visible(root)) continue;
+        const blocks = [...root.querySelectorAll('p, li, blockquote, dd')].filter(el => visible(el) && !el.closest('figure, figcaption, table, pre, code, aside') && [...el.childNodes].some(n => n.nodeType === 3 && n.data.trim()));
+        if (blocks.length < 3) continue;
+        const sizes = blocks.map(el => parseFloat(css(el).fontSize)), count = new Map();
+        sizes.forEach(v => count.set(v, (count.get(v) ?? 0) + 1));
+        const body = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        blocks.forEach((el, i) => { if (sizes[i] < body - 0.5) small.push(`${sizes[i]} 对 ${body}「${el.textContent.trim().slice(0, 10)}」`); });
+      }
+      out.push(small.length ? `✗ 正文里有段落比正文小：${small.length} 段，例：${small.slice(0, 2).join('，')}（对照的原文、引文都和正文同一个字号，靠颜色分主次）` : '✓ 正文字号：段落都和正文一样大');
+    }
   }
   return out.join('\n');
 })();
