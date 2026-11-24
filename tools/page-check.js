@@ -458,7 +458,8 @@
     const trackCovered = [];
     for (const sc of doc.querySelectorAll('*')) {
       const st = css(sc);
-      if (!/(auto|scroll)/.test(st.overflowY) || sc.scrollHeight <= sc.clientHeight + 1 || !visible(sc)) continue;
+      // 开着模态框时，后面的页面被遮罩盖住是设计如此，只查框里的（2026-11-24 FBIF-电脑端群发工具执行记录详情：遮罩被报成压住列表的滚动条）
+      if (!/(auto|scroll)/.test(st.overflowY) || sc.scrollHeight <= sc.clientHeight + 1 || !visible(sc) || (modal && !modal.contains(sc))) continue;
       const r = sc.getBoundingClientRect();
       if (r.height < 80) continue;
       const root = sc.parentElement?.parentElement || sc;
