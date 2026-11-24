@@ -23,7 +23,12 @@
     const modal = [...doc.querySelectorAll('[role="dialog"], [role="alertdialog"]')].find(d => d.getAttribute('aria-modal') === 'true' || doc.querySelector('[data-base-ui-inert], [data-slot$="overlay"], [data-slot$="backdrop"]'));
 
     // 1. 到头回弹、带着整页晃：contain 只挡住连带滚动，回弹还在，要 none。
-    const bouncy = el => css(el).overscrollBehaviorY !== 'none' || css(el).overscrollBehaviorX !== 'none';
+    // 滚动区只看它真能滚的方向；滚不动的方向要留 auto，不然 Chrome 里滚轮停在它上面传不到外层（第 29 项，2026-11-25 FBIF-合同盖章）。
+    const canY = el => /(auto|scroll)/.test(css(el).overflowY) && el.scrollHeight > el.clientHeight + 1;
+    const canX = el => /(auto|scroll)/.test(css(el).overflowX) && el.scrollWidth > el.clientWidth + 1;
+    const bouncy = el => el === doc.documentElement || el === doc.body
+      ? css(el).overscrollBehaviorY !== 'none' || css(el).overscrollBehaviorX !== 'none'
+      : (canY(el) && css(el).overscrollBehaviorY !== 'none') || (canX(el) && css(el).overscrollBehaviorX !== 'none');
     const bounce = [doc.documentElement, doc.body, ...scrollers.filter(el => !inPopup(el))].filter(bouncy);
     const popupLoose = scrollers.filter(el => inPopup(el) && bouncy(el)).length;
     const popupNote = popupLoose ? `；另有 ${popupLoose} 个在 Fluid 弹层里，照组件原样 auto，不算` : '';
@@ -636,6 +641,26 @@
         if (fs < 15 || muted) weak.push(`${fs}px ${c.color}「${ps[0].textContent.trim().slice(0, 10)}」`);
       }
       out.push(weak.length ? `✗ 长文正文太小或发灰：${weak.slice(0, 2).join('，')}（长文正文不小于 15px、用正文色）` : '✓ 长文正文：字号和颜色够读');
+    }
+
+    // 29. 滚轮被挡（2026-11-25 FBIF-合同盖章：操作审计的表格包在只横着滚的滚动区里，上下也写了「不回弹」，指着表格滚轮整页不动；
+    // 窄屏三栏上下叠时，右栏里那个滚不动的滚动区也把整页挡住）。Chrome 里滚动盒在某个方向写了 none / contain，
+    // 哪怕它在这个方向滚不动，滚轮也不往外传。查：滚动盒在它滚不动的方向写了 none/contain，外面又有在这个方向能滚的。
+    {
+      const pageCan = { y: doc.documentElement.scrollHeight > doc.documentElement.clientHeight + 1, x: doc.documentElement.scrollWidth > doc.documentElement.clientWidth + 1 };
+      const traps = [];
+      for (const el of all) {
+        if (el === doc.documentElement || el === doc.body || inPopup(el) || !/(auto|scroll|hidden)/.test(css(el).overflowX + css(el).overflowY)) continue;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height || !el.checkVisibility()) continue;
+        for (const [axis, label, prop, can] of [['y', '上下', 'overscrollBehaviorY', canY], ['x', '左右', 'overscrollBehaviorX', canX]]) {
+          if (css(el)[prop] === 'auto' || can(el)) continue;
+          let p = el.parentElement;
+          while (p && p !== doc.body && !can(p)) p = p.parentElement;
+          if ((p && p !== doc.body) || pageCan[axis]) traps.push(`${name(el)}（${label}）`);
+        }
+      }
+      out.push(traps.length ? `✗ 滚轮被挡：${traps.length} 处滚动盒在滚不动的方向写了 ${'none/contain'}，指着它外层滚不动：${traps.slice(0, 4).join('，')}（overscroll-behavior 只写在它能滚的方向）` : '✓ 滚轮：没有滚动盒挡住外层滚动');
     }
   }
   return out.join('\n');
