@@ -567,7 +567,9 @@
           const a = cards[i], b = cards[i + 1], ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
           if (Math.abs(ra.left - rb.left) > 2 || a.matches('[data-selected], [aria-selected="true"]') || b.matches('[data-selected], [aria-selected="true"]') || a.querySelector('[aria-pressed="true"]:not([data-slot] *)')) continue;
           pairs++;
-          if (rb.top - ra.bottom >= 24 || [a, b].some(c => paints(c) || paints(c, '::after') || paints(c, '::before'))) lined++;
+          // Fluid CardGroup 的分隔线是卡片里贴着底边的 1px 子元素，不是伪元素（2026-11-24 FBIF-电脑端群发工具执行记录：线在却报没有）
+          const edgeLine = c => { const rc = c.getBoundingClientRect(); return [...c.children].some(k => { const r = k.getBoundingClientRect(); return r.height > 0 && r.height <= 2 && r.width >= rc.width / 2 && (Math.abs(r.bottom - rc.bottom) <= 2 || Math.abs(r.top - rc.top) <= 2) && paints(k); }); };
+          if (rb.top - ra.bottom >= 24 || [a, b].some(c => paints(c) || paints(c, '::after') || paints(c, '::before') || edgeLine(c))) lined++;
         }
         if (pairs && lined < pairs) bare.push(`${name(g)} ${pairs - lined}/${pairs} 对`);
       }
