@@ -632,16 +632,19 @@
 
     // 28. 长文正文字太小、颜色发灰（2026-11-24 资讯订阅阅读器：文章正文用了 Fluid .typeset 默认的 13 号灰字，用户「正文的字有点小」「颜色也怪」，旧版是 16/26 正文色）：
     // .typeset 里有 6 段以上、平均每段 60 字以上就当长文读，正文不小于 15px，颜色要用正文色（和小标题一样深），不用说明文字的灰。
+    // 看字数最多的那种样子，不看第一段（2026-11-25 FoodTalks-资讯订阅：第一段是原文 13 号灰字的图注，正文 2549 字都是 16 号深色，被报成正文发灰）。
     {
       const weak = [];
       for (const root of doc.querySelectorAll('.typeset, .article-body')) {
         if (!visible(root) || root.parentElement?.closest('.typeset, .article-body')) continue;
         const ps = [...root.querySelectorAll('p')].filter(p => visible(p) && !p.closest('figure, aside, blockquote, .not-typeset') && p.textContent.trim().length >= 20);
         if (ps.length < 6 || ps.reduce((n, p) => n + p.textContent.trim().length, 0) / ps.length < 60) continue;
-        const c = css(ps[0]), fs = parseFloat(c.fontSize);
+        const tally = new Map();
+        for (const p of ps) { const k = css(p), key = `${k.fontSize}|${k.color}`; tally.set(key, { c: k, p: tally.get(key)?.p || p, n: (tally.get(key)?.n || 0) + p.textContent.trim().length }); }
+        const main = [...tally.values()].sort((a, b) => b.n - a.n)[0], c = main.c, fs = parseFloat(c.fontSize);
         const lum = col => { const m = col.match(/[\d.]+/g).map(Number); return m.length >= 3 ? (m[0] + m[1] + m[2]) / 3 : 0; };
         const fg = css(doc.body).color, muted = lum(c.color) - lum(fg) > 40;
-        if (fs < 15 || muted) weak.push(`${fs}px ${c.color}「${ps[0].textContent.trim().slice(0, 10)}」`);
+        if (fs < 15 || muted) weak.push(`${fs}px ${c.color}「${main.p.textContent.trim().slice(0, 10)}」`);
       }
       out.push(weak.length ? `✗ 长文正文太小或发灰：${weak.slice(0, 2).join('，')}（长文正文不小于 15px、用正文色）` : '✓ 长文正文：字号和颜色够读');
     }
@@ -678,6 +681,8 @@
       const textOf = b => { let t = ''; const w = doc.createTreeWalker(b, NodeFilter.SHOW_TEXT); for (let n; (n = w.nextNode());) if (n.textContent.trim() && shows(n.parentElement) && css(n.parentElement).opacity !== '0') t += n.textContent.trim(); return t; };
       // 底色铺在紧裹着按钮、和它一样大的外层也算（2026-11-25 FoodTalks-资讯订阅：Fluid DatePicker 只有 outline 和 ghost，日期按钮的灰底铺在它外面那层，被报成没底色）；比按钮大的外层（一整条灰底工具栏）不算
       const wraps = b => { const r = b.getBoundingClientRect(), up = []; for (let p = b.parentElement; p && p !== doc.body; p = p.parentElement) { const q = p.getBoundingClientRect(); if (Math.abs(q.left - r.left) > 1 || Math.abs(q.top - r.top) > 1 || Math.abs(q.right - r.right) > 1 || Math.abs(q.bottom - r.bottom) > 1) break; up.push(p); } return up; };
+      // 链接样子的（Fluid 卡片按钮、shadcn 按钮的 link 款：字下面留了下划线位置，指着出下划线）是链接，不查底色（2026-11-25 FoodTalks-资讯订阅：卡片上能点进来源的来源名被报成没底色）
+      const linky = b => css(b).textDecorationLine.includes('underline') || !['auto', '0px'].includes(css(b).textUnderlineOffset);
       const fills = b => [b, ...b.querySelectorAll('*'), ...wraps(b)].filter(e => shows(e) && (!clear(css(e).backgroundColor) || css(e).backgroundImage !== 'none'));
       // 先画到 1×1 画布上换成屏幕颜色再判断：oklch、lab、color-mix 写的黑底按字面量读不出亮度（2026-11-25 FBIF-合同盖章 Fluid 原版黑底按钮是 lab(2.75 0 0)，这项照样打了 ✓）
       const pen = doc.createElement('canvas').getContext('2d', { willReadFrequently: true });
@@ -687,7 +692,7 @@
       for (const b of doc.querySelectorAll('button, [role="button"]')) {
         if (!shows(b) || b.closest(NOT_ACTION) || b.matches(NOT_ACTION) || b.disabled) continue;
         const t = textOf(b);
-        if (!t) continue;
+        if (!t || linky(b)) continue;
         const f = fills(b);
         if (!f.length) { bare.push(`「${t.slice(0, 8)}」`); continue; }
         // 半透明的灰底（secondary 是 8% 黑）不算黑，只看几乎不透明的底

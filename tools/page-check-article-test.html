@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- page-check.js 第 28 项（长文正文）的测试页（2026-11-25）。
+     打开 ?case=bad：正文都是 13 号灰字，要报 ✗。
+     打开 ?case=good：第一段是原文带来的 13 号灰字图注，正文都是 16 号深色，不该报。 -->
+<html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{font:14px sans-serif;margin:24px;background:#fff;color:#171717}
+.typeset{max-width:640px}.body p{font-size:16px;line-height:26px}.small p{font-size:13px;color:#737373}
+.cap{font-size:13px;color:#737373}
+</style></head><body>
+<article id="root" class="typeset"></article>
+<script>
+const para = '美国大豆基金会主席在进博会上介绍了今年的出口情况，并和中国的进口商谈了明年的采购计划，现场来了很多食品企业的采购负责人。';
+const paras = Array.from({ length: 7 }, () => `<p>${para}</p>`).join('');
+const bad = new URLSearchParams(location.search).get('case') === 'bad';
+const root = document.getElementById('root');
+root.className = 'typeset ' + (bad ? 'small' : 'body');
+root.innerHTML = bad ? paras : `<p class="cap">封图 | 美国豆农接受采访（记者摄）这是一段原文自带的图注文字</p>${paras}`;
+</script>
+</body></html>
