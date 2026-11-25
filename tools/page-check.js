@@ -704,12 +704,37 @@
         for (const e of card.querySelectorAll('span, div, p')) {
           if (e.closest('button, [role="button"]') || !e.checkVisibility()) continue;
           const r = e.getBoundingClientRect(), c = css(e), t = e.textContent.trim();
-          if (!t || t.length > 10 || r.height > 28 || r.height < 12 || e.querySelector('img')) continue;
+          // 圆的（宽不比高多）是头像的首字，不是胶囊（2026-11-25 FoodTalks-资讯订阅：来源头像「三」「蓝」被报成状态词）
+          if (!t || t.length > 10 || r.height > 28 || r.height < 12 || r.width <= r.height + 2 || e.querySelector('img')) continue;
           const painted = !/^(transparent|rgba\([^)]*,\s*0\))$/.test(c.backgroundColor) || parseFloat(c.borderTopWidth) > 0;
           if (painted && parseFloat(c.borderTopLeftRadius) >= r.height / 2 - 1) pills.push(`「${t}」`);
         }
       }
       out.push(pills.length ? `✗ 卡片上挂了状态短词：${pills.length} 个，例：${[...new Set(pills)].slice(0, 4).join('，')}（卡片上不挂状态；要人做的事写成按钮，状态写进点开的框里）` : '✓ 卡片状态词：卡片上没有挂状态胶囊');
+    }
+
+    // 33. 按钮里图标和字不在一行（2026-11-25 FBIF-电脑端群发工具 设置 → 关于「打开日志文件夹」：图标当子元素塞进 Fluid 按钮，
+    // 按钮把子元素包进同一个块，图标叠到字上面、字掉出按钮，「字的上下」量不出来）。带图标的按钮，图标整个在字上面或下面就算。
+    {
+      const seen = e => e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+      const range = doc.createRange(), split = [];
+      for (const b of doc.querySelectorAll('button, [role="button"]')) {
+        if (!seen(b)) continue;
+        const icon = [...b.querySelectorAll('svg')].find(s => seen(s) && s.getBoundingClientRect().height > 4);
+        if (!icon) continue;
+        let line = null, t = '';
+        const w = doc.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+        for (let n; !line && (n = w.nextNode());) {
+          // 只给读屏的字（1px 的 sr-only）不算
+          if (!n.textContent.trim() || !seen(n.parentElement) || n.parentElement.getBoundingClientRect().width <= 1) continue;
+          range.selectNodeContents(n);
+          const r = range.getBoundingClientRect();
+          if (r.height) { line = r; t = n.textContent.trim(); }
+        }
+        const r = icon.getBoundingClientRect();
+        if (line && (r.bottom <= line.top + 1 || r.top >= line.bottom - 1)) split.push(`「${t.slice(0, 8)}」`);
+      }
+      out.push(split.length ? `✗ 按钮里图标和字不在一行：${split.length} 个，例：${[...new Set(split)].slice(0, 4).join('，')}（图标用按钮的 leadingIcon；要换图标动画就把图标和字包进一个 inline-flex）` : '✓ 按钮图标：图标和字都在一行');
     }
   }
   return out.join('\n');
