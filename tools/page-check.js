@@ -447,8 +447,8 @@
       if (!tr) continue;
       const cells = [...tr.children];
       if (cells.some(td => textLines(td) > 1)) continue;
-      const c = css(cells[0]);
-      const one = parseFloat(c.paddingTop) + parseFloat(c.paddingBottom) + (parseFloat(c.lineHeight) || 20) + parseFloat(c.borderTopWidth) + parseFloat(c.borderBottomWidth);
+      // 每格字号可以不一样（2026-11-25 FBIF-演讲嘉宾同步 对照表：第一格是小字标签，后面是正文），按最高的一格算
+      const one = Math.max(...cells.map(td => { const c = css(td); return parseFloat(c.paddingTop) + parseFloat(c.paddingBottom) + (parseFloat(c.lineHeight) || 20) + parseFloat(c.borderTopWidth) + parseFloat(c.borderBottomWidth); }));
       const h = tr.getBoundingClientRect().height;
       if (h > one + 2) stretched.push(`${name(table)} 每行 ${Math.round(h)}px（一行字该是 ${Math.round(one)}）`);
     }
@@ -752,6 +752,26 @@
         if (rc.bottom - end > 4) tall.push(`${Math.round(rc.bottom - end)}px「${c.textContent.trim().slice(0, 10)}」`);
       }
       out.push(tall.length ? `✗ 卡片被撑高、底下空一截：${tall.length} 张，例：${tall.slice(0, 3).join('，')}（多半是和更高的骨架叠在一格被拉高：叠放的外层加 items-start，骨架照卡片的行高排）` : '✓ 卡片高度：没有被撑高、底下空一截的');
+    }
+
+    // 35. 说明字用了主色（2026-11-25 FBIF-演讲嘉宾同步 对照框：「官网上有人改过中文职位、英文职位，发出去会换成表里的」整句主色蓝字，
+    // 看着像链接，用户：「这句话不清晰」）。不是链接、按钮、选中项的字，颜色和 --fluid-accent 一样就算；说明用 Fluid 的 Banner。
+    {
+      const probe = doc.createElement('span');
+      probe.style.color = 'var(--fluid-accent)';
+      doc.body.appendChild(probe);
+      const accent = css(probe).color;
+      probe.remove();
+      const blue = [];
+      if (accent !== css(doc.body).color) {
+        const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        for (let n; (n = w.nextNode());) {
+          const e = n.parentElement, t = n.textContent.trim();
+          if (!t || !e || !visible(e) || e.closest('a, button, [role="button"], [role="link"], [role="tab"], [role="option"], [role="menuitem"], [aria-current], [aria-selected="true"]')) continue;
+          if (css(e).color === accent) blue.push(`「${t.slice(0, 12)}」`);
+        }
+      }
+      out.push(blue.length ? `✗ 说明字用了主色：${blue.length} 处，例：${[...new Set(blue)].slice(0, 4).join('，')}（主色字像链接，看不出是说明；说明用 Fluid 的 Banner）` : '✓ 说明字颜色：不是链接和按钮的字都没用主色');
     }
   }
   return out.join('\n');
