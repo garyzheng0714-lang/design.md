@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- page-check.js 第 30-33 项的测试页（2026-11-25）。
-     打开 ?case=bad：一个只有字的「下架」、黑底「发布」（rgb、oklch、lab 三种写法）、卡片上一个「官网也改过」胶囊，图标叠在字上面的「打开日志文件夹」，四项都要报 ✗；Fluid 侧栏框架主内容区（sidebar-inset）里的「取消选择」「下载」也要算进去；放在一大块灰底上的只有字的「筛选」也要报。
-     打开 ?case=good：主色、灰底、红底三种按钮，卡片里的动作按钮和圆形头像首字，只有图标的按钮，图标和字排一行的「打开日志文件夹」，菜单项，底色铺在和按钮一样大的外层的「今天」（Fluid DatePicker 的 ghost），链接样子的「第一财经」（Fluid 卡片按钮的 link 款），四项都不该报；侧栏里只有字的行不查。 -->
+     打开 ?case=bad：一个只有字的「下架」、黑底「发布」（rgb、oklch、lab 三种写法）、卡片上一个「官网也改过」胶囊，图标叠在字上面的「打开日志文件夹」，四项都要报 ✗；Fluid 侧栏框架主内容区（sidebar-inset）里的「取消选择」「下载」也要算进去；放在一大块灰底上的只有字的「筛选」、和标题一起放在灰底上的「排序」也要报。
+     打开 ?case=good：主色、灰底、红底三种按钮，卡片里的动作按钮和圆形头像首字，只有图标的按钮，图标和字排一行的「打开日志文件夹」，菜单项，底色铺在和按钮一样大的外层的「今天」（Fluid DatePicker 的 ghost）、和「×」并成一颗胶囊共用底色的「2026年11月11日」，链接样子的「第一财经」（Fluid 卡片按钮的 link 款），四项都不该报；侧栏里只有字的行不查。 -->
 <html lang="zh-CN"><head><meta charset="utf-8"><style>
 body{font:14px sans-serif;margin:24px;background:#fff;color:#111}
 button{font:inherit;border:0;border-radius:8px;padding:6px 12px;margin:4px;cursor:pointer}
@@ -23,7 +23,8 @@ const bad = `
   <button class="gray fixed"><span class="stack"><span class="cell"><svg width="14" height="14"><path d="M2 2L12 12" stroke="#111"/></svg></span><span>打开日志文件夹</span></span></button>
   <div data-slot="card"><span>周启明</span><span class="pill">官网也改过</span></div>
   <div data-slot="sidebar-wrapper"><main data-slot="sidebar-inset"><button class="ghost">取消选择</button><button class="black">下载</button></main></div>
-  <div class="gray" style="display:inline-block;padding:8px;border-radius:8px"><button class="ghost" style="margin:0">筛选</button></div>`;
+  <div class="gray" style="display:inline-block;padding:8px;border-radius:8px"><button class="ghost" style="margin:0">筛选</button></div>
+  <div class="gray" style="display:inline-flex;border-radius:8px"><span>全部资讯</span><button class="ghost" style="margin:0">排序</button></div>`;
 const good = `
   <button class="blue">发布</button><button class="gray">取消</button><button class="red">下架</button>
   <button class="gray fixed"><span class="stack"><span class="row"><span class="cell"><svg width="14" height="14"><path d="M2 2L12 12" stroke="#111"/></svg></span><span>打开日志文件夹</span></span></span></button>
@@ -32,6 +33,7 @@ const good = `
   <div data-slot="card"><span>周启明</span><span class="pill" style="width:20px;padding:0;justify-content:center">三</span><button class="gray">补头像</button></div>
   <div data-slot="sidebar-wrapper"><div data-slot="sidebar"><button class="ghost">我的合同</button></div><main data-slot="sidebar-inset"><button class="blue">下载</button><button class="gray">取消选择</button></main></div>
   <span class="gray" style="display:inline-flex;border-radius:8px;margin:4px"><span style="display:inline-flex"><button class="ghost" style="margin:0">今天</button></span></span>
+  <span class="gray" style="display:inline-flex;border-radius:8px;margin:4px"><span style="display:inline-flex"><button class="ghost" style="margin:0">2026年11月11日</button></span><button class="icon" aria-label="回到最新" style="margin:0"><svg width="16" height="16"><path d="M2 2L14 14" stroke="#111"/></svg></button></span>
   <div data-slot="card"><span>18:39</span><button class="ghost" style="padding:0;text-underline-offset:4px">第一财经</button></div>`;
 document.getElementById('root').innerHTML = new URLSearchParams(location.search).get('case') === 'bad' ? bad : good;
 </script>
