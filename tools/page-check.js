@@ -736,6 +736,23 @@
       }
       out.push(split.length ? `✗ 按钮里图标和字不在一行：${split.length} 个，例：${[...new Set(split)].slice(0, 4).join('，')}（图标用按钮的 leadingIcon；要换图标动画就把图标和字包进一个 inline-flex）` : '✓ 按钮图标：图标和字都在一行');
     }
+
+    // 34. 卡片被撑高、底下空一截（2026-11-25 FoodTalks-资讯订阅 热点专页：报道到之前先排的骨架比卡片高，和卡片叠在同一格，卡片被拉成骨架那么高，标题底下空出 12，用户：这个页面有点乱）。
+    // 竖排的卡片，最后一样东西底下加上自己的下内边距，离卡片底边还多出 4px 以上就算；同一排并肩的卡片拉成一样高是故意的，Fluid 卡片最小高度撑出来的也不算。
+    {
+      const tall = [];
+      const cards = [...doc.querySelectorAll('[data-slot="card"]')].filter(visible);
+      const beside = (a, b) => { const r = a.getBoundingClientRect(), o = b.getBoundingClientRect(); return o.top < r.bottom - 1 && o.bottom > r.top + 1 && (o.right <= r.left + 1 || o.left >= r.right - 1); };
+      for (const c of cards) {
+        const s = css(c), rc = c.getBoundingClientRect();
+        if (s.flexDirection !== 'column' || rc.height <= (parseFloat(s.minHeight) || 0) + 1 || cards.some(o => o !== c && beside(c, o))) continue;
+        const flow = [...c.children].filter(k => !['absolute', 'fixed'].includes(css(k).position) && visible(k));
+        if (!flow.length) continue;
+        const end = Math.max(...flow.map(k => k.getBoundingClientRect().bottom + (parseFloat(css(k).marginBottom) || 0))) + parseFloat(s.paddingBottom) + parseFloat(s.borderBottomWidth);
+        if (rc.bottom - end > 4) tall.push(`${Math.round(rc.bottom - end)}px「${c.textContent.trim().slice(0, 10)}」`);
+      }
+      out.push(tall.length ? `✗ 卡片被撑高、底下空一截：${tall.length} 张，例：${tall.slice(0, 3).join('，')}（多半是和更高的骨架叠在一格被拉高：叠放的外层加 items-start，骨架照卡片的行高排）` : '✓ 卡片高度：没有被撑高、底下空一截的');
+    }
   }
   return out.join('\n');
 })();
