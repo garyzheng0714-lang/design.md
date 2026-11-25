@@ -670,8 +670,9 @@
     // 用户：「可点击的按钮你都是没有背景色的，我超级讨厌这种设计」「我的主色你为什么不用」）。
     // 侧栏只排除侧栏本身（data-slot="sidebar"）：Fluid 的主内容区是 sidebar-inset、外壳是 sidebar-wrapper，按前缀排除会把整页按钮都跳过（2026-11-25 FBIF-合同盖章 黑底「下载」、只有字的「取消选择」都打了 ✓）。
     // 只查平时就摆着的动作按钮：菜单项、选项卡、选择框、侧栏行、表头、手风琴、面包屑这些不是动作按钮，不查；只有图标的按钮不查（另有图标钮规矩）。
+    // 面包屑按 Fluid 的 data-slot 认，不只认英文的 aria-label（2026-11-25 FoodTalks-资讯订阅：面包屑起名「位置」，「微信公众号」「小食代」被报成没底色的按钮）。
     {
-      const NOT_ACTION = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="combobox"], [aria-haspopup="listbox"], th, [data-sidebar], [data-slot="sidebar"], nav[aria-label*="readcrumb"], [data-slot*="accordion"], [data-slot*="tabs"], [data-slot*="toggle"]';
+      const NOT_ACTION = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="combobox"], [aria-haspopup="listbox"], th, [data-sidebar], [data-slot="sidebar"], nav[aria-label*="readcrumb"], [data-slot="breadcrumb"], [data-slot*="accordion"], [data-slot*="tabs"], [data-slot*="toggle"]';
       const clear = c => c === 'transparent' || /rgba?\([^)]*,\s*0\)$/.test(c) || /\/\s*0\)$/.test(c);
       const shows = el => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && el.checkVisibility(); };
       const textOf = b => { let t = ''; const w = doc.createTreeWalker(b, NodeFilter.SHOW_TEXT); for (let n; (n = w.nextNode());) if (n.textContent.trim() && shows(n.parentElement) && css(n.parentElement).opacity !== '0') t += n.textContent.trim(); return t; };
