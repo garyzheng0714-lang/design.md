@@ -668,15 +668,18 @@
 
     // 30-31. 带字的按钮没底色、主按钮是黑的（2026-11-25 FBIF-演讲嘉宾同步：卡片上「下架」只有一行黑字，主按钮用了 Fluid 原版的黑；
     // 用户：「可点击的按钮你都是没有背景色的，我超级讨厌这种设计」「我的主色你为什么不用」）。
+    // 侧栏只排除侧栏本身（data-slot="sidebar"）：Fluid 的主内容区是 sidebar-inset、外壳是 sidebar-wrapper，按前缀排除会把整页按钮都跳过（2026-11-25 FBIF-合同盖章 黑底「下载」、只有字的「取消选择」都打了 ✓）。
     // 只查平时就摆着的动作按钮：菜单项、选项卡、选择框、侧栏行、表头、手风琴、面包屑这些不是动作按钮，不查；只有图标的按钮不查（另有图标钮规矩）。
     {
-      const NOT_ACTION = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="combobox"], [aria-haspopup="listbox"], th, [data-sidebar], [data-slot^="sidebar"], nav[aria-label*="readcrumb"], [data-slot*="accordion"], [data-slot*="tabs"], [data-slot*="toggle"]';
+      const NOT_ACTION = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="combobox"], [aria-haspopup="listbox"], th, [data-sidebar], [data-slot="sidebar"], nav[aria-label*="readcrumb"], [data-slot*="accordion"], [data-slot*="tabs"], [data-slot*="toggle"]';
       const clear = c => c === 'transparent' || /rgba?\([^)]*,\s*0\)$/.test(c) || /\/\s*0\)$/.test(c);
       const shows = el => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && el.checkVisibility(); };
       const textOf = b => { let t = ''; const w = doc.createTreeWalker(b, NodeFilter.SHOW_TEXT); for (let n; (n = w.nextNode());) if (n.textContent.trim() && shows(n.parentElement) && css(n.parentElement).opacity !== '0') t += n.textContent.trim(); return t; };
       const fills = b => [b, ...b.querySelectorAll('*')].filter(e => shows(e) && (!clear(css(e).backgroundColor) || css(e).backgroundImage !== 'none'));
-      const lum = c => { const m = (c.match(/[\d.]+/g) || []).map(Number); return m.length >= 3 && !/oklch|oklab|lab|lch/.test(c) ? (m[0] + m[1] + m[2]) / 3 : null; };
-      const lightPage = (lum(css(doc.body).backgroundColor) ?? 255) > 128 || clear(css(doc.body).backgroundColor);
+      // 先画到 1×1 画布上换成屏幕颜色再判断：oklch、lab、color-mix 写的黑底按字面量读不出亮度（2026-11-25 FBIF-合同盖章 Fluid 原版黑底按钮是 lab(2.75 0 0)，这项照样打了 ✓）
+      const pen = doc.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      const rgba = c => { pen.clearRect(0, 0, 1, 1); pen.fillStyle = '#000'; pen.fillStyle = c; pen.fillRect(0, 0, 1, 1); const [r, g, b, a] = pen.getImageData(0, 0, 1, 1).data; return { l: (r + g + b) / 3, a: a / 255 }; };
+      const lightPage = clear(css(doc.body).backgroundColor) || rgba(css(doc.body).backgroundColor).l > 128;
       const bare = [], black = [];
       for (const b of doc.querySelectorAll('button, [role="button"]')) {
         if (!shows(b) || b.closest(NOT_ACTION) || b.matches(NOT_ACTION) || b.disabled) continue;
@@ -685,11 +688,11 @@
         const f = fills(b);
         if (!f.length) { bare.push(`「${t.slice(0, 8)}」`); continue; }
         // 半透明的灰底（secondary 是 8% 黑）不算黑，只看几乎不透明的底
-        const bg = css(f[0]).backgroundColor, a = (bg.match(/[\d.]+/g) || []).map(Number)[3] ?? 1, l = lum(bg);
-        if (lightPage && l !== null && a > 0.9 && l < 60) black.push(`「${t.slice(0, 8)}」`);
+        const { l, a } = rgba(css(f[0]).backgroundColor);
+        if (lightPage && a > 0.9 && l < 60) black.push(`「${t.slice(0, 8)}」`);
       }
       out.push(bare.length ? `✗ 带字的按钮没有底色：${bare.length} 个，例：${[...new Set(bare)].slice(0, 5).join('，')}（主要的用主色 primary，次要的用 secondary，危险的用 destructive；不用 ghost、tertiary）` : '✓ 按钮底色：带字的按钮都有底色');
-      out.push(black.length ? `✗ 主按钮是黑的：${black.length} 个，例：${[...new Set(black)].slice(0, 4).join('，')}（主按钮用主色 #4C82D9）` : '✓ 主按钮颜色：没有黑底按钮');
+      out.push(black.length ? `✗ 主按钮是黑的：${black.length} 个，例：${[...new Set(black)].slice(0, 4).join('，')}（主按钮填主色 --fluid-accent）` : '✓ 主按钮颜色：没有黑底按钮');
     }
 
     // 32. 卡片上挂状态短词（2026-11-25 FBIF-演讲嘉宾同步：嘉宾卡上「● 官网也改过」「缺名字」，用户：「超级难看和恶心人」「谁看得懂」）。
