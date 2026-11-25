@@ -310,7 +310,8 @@ def build(folder, ui):
         body.append("</section>")
     page = (
         "<!doctype html><meta charset=utf-8><title>检查记录</title><style>"
-        "body{font:15px/1.7 -apple-system,'PingFang SC',sans-serif;max-width:1600px;margin:24px auto;padding:0 24px;color:#111}"
+        "html,body{overscroll-behavior:none}html{font:15px/1.7 'Inter Variable',Inter,-apple-system,'PingFang SC',sans-serif}"
+        "body{max-width:1600px;margin:24px auto;padding:0 24px;color:#111}"
         ".result{background:#f5f5f5;border-radius:12px;padding:16px 20px;margin:16px 0 8px}.result p{margin:4px 0}.result span{color:#737373;margin-right:12px}"
         ".lead{font-size:17px;font-weight:600}.todo{font-size:15px}"
         ".raw{border:0;margin:4px 0 0;padding:0}.raw summary{font-size:12px}"
