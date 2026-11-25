@@ -7,7 +7,7 @@
   evidence.py build <记录文件夹> [--ui]         核对通过后生成 index.html（给用户在浏览器看）
 
 核对的规矩：最上面「结果」一段写「结果：」「要你做的：」各一句大白话；三段标题齐全（查了什么、没查什么、审出什么）；
-看得见的字（代码块、组件对照、自查脚本以外）不放提交号、命令、文件路径和 `代码`，这些放代码块，网页里收起（用户 2026-11-25：「我极度讨厌这种汇报」）；--ui 时要贴自查脚本完整输出且没有 ✗；--ui 时还要有「组件对照」一段表格（每块是不是 Fluid、比过哪些、为什么选它）；每一项「### 」都有「结论：」；
+看得见的字（代码块、组件对照、自查脚本以外）不放提交号、命令、文件路径和 `代码`，这些放代码块，网页里收起（用户 2026-11-25：「我极度讨厌这种汇报」）；--ui 时要贴自查脚本完整输出且没有 ✗（别人设计里原来就有、用户定了不改的，写进「原设计保留」一段、点出那条的名字才放过；用户 2026-11-25：「恢复原先的吧，尊重一下他们」）；--ui 时还要有「组件对照」一段表格（每块是不是 Fluid、比过哪些、为什么选它）；每一项「### 」都有「结论：」；
 每张图文件都在、紧跟着有「标注：」一行写清框出了什么；模板里的占位字一个不剩；至少一张图或一段命令输出；
 正文（不算代码块里的命令输出、图片地址和 Markdown 记号）不超过 500 字，能画成 SVG 的不写成字（用户 2026-11-24 定）。
 """
@@ -23,6 +23,7 @@ RESULT = "## 结果"
 SECTIONS = [RESULT, "## 查了什么", "## 没查什么", "## 审出什么"]
 OPEN = (RESULT, "## 查了什么")
 UI_SECTION = "## 组件对照"
+KEPT = "## 原设计保留"
 TECH = (UI_SECTION, "## 自查脚本")
 JARGON = [
     (re.compile(r"(?<![0-9A-Za-z])(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?![0-9A-Za-z])"), "提交号或哈希"),
@@ -70,7 +71,7 @@ TEMPLATE = """# {item}（{project}，{date}）
 
 ## 自查脚本
 
-每种布局、每个状态（详情开、关）各跑一次 tools/page-check.js，输出原样贴进来，不能有一条 ✗：
+每种布局、每个状态（详情开、关）各跑一次 tools/page-check.js，输出原样贴进来，不能有一条 ✗（别人设计里原来就有、用户定了不改的，另起「## 原设计保留」一段点出名字）：
 
 ```
 <写清楚>
@@ -84,6 +85,19 @@ TEMPLATE = """# {item}（{project}，{date}）
 
 - ……
 """
+
+
+def section_text(lines, head):
+    """某一段（## 标题）底下到下一段之前的字，没有这段就是空的。"""
+    at = next((i for i, line in enumerate(lines) if line.startswith(head)), None)
+    if at is None:
+        return ""
+    body = []
+    for line in lines[at + 1:]:
+        if line.startswith("## "):
+            break
+        body.append(line)
+    return "\n".join(body)
 
 
 def new(project, item):
@@ -184,9 +198,11 @@ def problems(folder, ui):
         runs = [b for b in blocks if "字的上下" in b and "—— " in b]
         if not runs:
             out.append("改了界面却没贴自查脚本（tools/page-check.js）的完整输出（要有「—— 页面」开头和「字的上下」那一行）")
+        kept = section_text(lines, KEPT)
         bad = [l.strip() for b in blocks for l in b.splitlines() if l.strip().startswith("✗")]
+        bad = [l for l in bad if not (kept and l[1:].split("：")[0].strip() in kept)]
         if bad:
-            out.append(f"自查脚本还有 {len(bad)} 条 ✗ 没改：" + "；".join(x[:60] for x in bad[:3]))
+            out.append(f"自查脚本还有 {len(bad)} 条 ✗ 没改（原设计就有、用户定了不改的，写进「原设计保留」一段点出名字）：" + "；".join(x[:60] for x in bad[:3]))
     if images == 0 and "```" not in text:
         out.append("既没有截图也没有命令输出，等于没查")
     n = words(text)
