@@ -676,7 +676,9 @@
       const clear = c => c === 'transparent' || /rgba?\([^)]*,\s*0\)$/.test(c) || /\/\s*0\)$/.test(c);
       const shows = el => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && el.checkVisibility(); };
       const textOf = b => { let t = ''; const w = doc.createTreeWalker(b, NodeFilter.SHOW_TEXT); for (let n; (n = w.nextNode());) if (n.textContent.trim() && shows(n.parentElement) && css(n.parentElement).opacity !== '0') t += n.textContent.trim(); return t; };
-      const fills = b => [b, ...b.querySelectorAll('*')].filter(e => shows(e) && (!clear(css(e).backgroundColor) || css(e).backgroundImage !== 'none'));
+      // 底色铺在紧裹着按钮、和它一样大的外层也算（2026-11-25 FoodTalks-资讯订阅：Fluid DatePicker 只有 outline 和 ghost，日期按钮的灰底铺在它外面那层，被报成没底色）；比按钮大的外层（一整条灰底工具栏）不算
+      const wraps = b => { const r = b.getBoundingClientRect(), up = []; for (let p = b.parentElement; p && p !== doc.body; p = p.parentElement) { const q = p.getBoundingClientRect(); if (Math.abs(q.left - r.left) > 1 || Math.abs(q.top - r.top) > 1 || Math.abs(q.right - r.right) > 1 || Math.abs(q.bottom - r.bottom) > 1) break; up.push(p); } return up; };
+      const fills = b => [b, ...b.querySelectorAll('*'), ...wraps(b)].filter(e => shows(e) && (!clear(css(e).backgroundColor) || css(e).backgroundImage !== 'none'));
       // 先画到 1×1 画布上换成屏幕颜色再判断：oklch、lab、color-mix 写的黑底按字面量读不出亮度（2026-11-25 FBIF-合同盖章 Fluid 原版黑底按钮是 lab(2.75 0 0)，这项照样打了 ✓）
       const pen = doc.createElement('canvas').getContext('2d', { willReadFrequently: true });
       const rgba = c => { pen.clearRect(0, 0, 1, 1); pen.fillStyle = '#000'; pen.fillStyle = c; pen.fillRect(0, 0, 1, 1); const [r, g, b, a] = pen.getImageData(0, 0, 1, 1).data; return { l: (r + g + b) / 3, a: a / 255 }; };
