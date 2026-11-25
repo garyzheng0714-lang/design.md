@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- page-check.js 第 30-32 项的测试页（2026-11-25）。
+     打开 ?case=bad：一个只有字的「下架」、一个黑底「发布」、卡片上一个「官网也改过」胶囊，三项都要报 ✗。
+     打开 ?case=good：主色、灰底、红底三种按钮，卡片里的动作按钮，只有图标的按钮，菜单项，三项都不该报。 -->
+<html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{font:14px sans-serif;margin:24px;background:#fff;color:#111}
+button{font:inherit;border:0;border-radius:8px;padding:6px 12px;margin:4px;cursor:pointer}
+.ghost{background:transparent}.black{background:#111;color:#fff}.blue{background:#4C82D9;color:#fff}
+.gray{background:rgba(0,0,0,.08)}.red{background:color-mix(in oklab,#e5484d 15%,transparent);color:#c62a2f}
+.icon{background:transparent;width:32px;height:32px;padding:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+[data-slot=card]{display:inline-flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:#fafafa;width:160px;margin:8px}
+.pill{display:inline-flex;align-self:center;height:20px;padding:0 8px;border-radius:999px;background:rgba(76,130,217,.12);color:#4C82D9;font-size:12px;align-items:center}
+</style></head><body>
+<div id="root"></div>
+<script>
+const bad = `
+  <button class="ghost">下架</button>
+  <button class="black">发布</button>
+  <div data-slot="card"><span>周启明</span><span class="pill">官网也改过</span></div>`;
+const good = `
+  <button class="blue">发布</button><button class="gray">取消</button><button class="red">下架</button>
+  <button class="icon" aria-label="关闭"><svg width="16" height="16"><path d="M2 2L14 14" stroke="#111"/></svg><span class="sr">Close</span></button>
+  <div role="menu"><button role="menuitem" class="ghost">复制</button></div>
+  <div data-slot="card"><span>周启明</span><button class="gray">补头像</button></div>`;
+document.getElementById('root').innerHTML = new URLSearchParams(location.search).get('case') === 'bad' ? bad : good;
+</script>
+</body></html>
