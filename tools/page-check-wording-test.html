@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- page-check.js 第 36 项「字太口语」的测试页（2026-11-26，FBIF-演讲嘉宾同步 发布台样稿原样的字）。
+     打开 ?case=bad：按钮「是这位」、状态「和官网上那位是同一人」「另建一位」、空状态「照片都齐了」「没有要认的人」、占位「没填名字」、按钮里拆开写的「都公开了」，都要报 ✗。
+     打开 ?case=good：「关联」「新建」「撤销」按钮，「已关联」「待公开」「暂无待办」「未填姓名」「即将发布 3 项」，输入框里用户自己打的「好了」，长文里的「我们终于做到了」，嘉宾名「李了」以外的正常数据，都不该报。 -->
+<html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{font:14px sans-serif;margin:24px;background:#fff;color:#111}
+button{font:inherit;border:0;border-radius:6px;padding:4px 10px;margin:4px;background:rgba(0,0,0,.06);cursor:pointer}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0}.muted{color:#888}
+</style></head><body>
+<div id="root"></div>
+<script>
+const bad = `
+  <div class="row"><span>余咸平</span><button>是这位</button><button>另建</button></div>
+  <div class="row"><span>信跃升</span><span>和官网上那位是同一人</span><button>改</button></div>
+  <div class="row"><span>王仁荣</span><span>另建一位</span></div>
+  <div class="muted">照片都齐了</div>
+  <div class="muted">没有要认的人</div>
+  <div class="row"><span class="muted">没填名字</span></div>
+  <button><span>论坛</span><span>都公开了</span></button>`;
+const good = `
+  <div class="row"><span>余咸平</span><button>关联</button><button>新建</button></div>
+  <div class="row"><span>信跃升</span><span>已关联</span><button>撤销</button></div>
+  <div class="row"><span>全体大会</span><span>待公开</span><button>撤销</button></div>
+  <div class="muted">暂无待办</div>
+  <div class="row"><span class="muted">未填姓名</span></div>
+  <div role="status">即将发布 3 项</div>
+  <input value="好了">
+  <article><p>我们终于做到了</p></article>
+  <div class="row"><span>首席选品官论坛</span><span>2027-04-21</span></div>`;
+document.getElementById('root').innerHTML = new URLSearchParams(location.search).get('case') === 'bad' ? bad : good;
+</script>
+</body></html>

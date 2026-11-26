@@ -784,6 +784,22 @@
       }
       out.push(blue.length ? `✗ 说明字用了主色：${blue.length} 处，例：${[...new Set(blue)].slice(0, 4).join('，')}（主色字像链接，看不出是说明；说明用 Fluid 的 Banner）` : '✓ 说明字颜色：不是链接和按钮的字都没用主色');
     }
+
+    // 36. 状态、按钮、空状态的字太口语（2026-11-25「这种口语化的描述，超级难看和恶心人」，2026-11-26 发布台样稿又犯：
+    // 「和官网上那位是同一人」「照片都齐了」「没填名字」，用户：「这些状态，我感觉有点太口语化了」）。
+    // 只看界面自己写的短字（按钮、14 字以内的一段字），输入框、正文、长文不看；写法照 文字排版.md：已X、待X、暂无X，按钮写动作。
+    {
+      const COLLOQ = /(了$|[一那这哪]位|没有要|还没|没填|没成功|一下|[吧呢啦咯哦]$|都(齐|公开|好|发|完|有))/;
+      const talky = [];
+      const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+      for (let n; (n = w.nextNode());) {
+        const e = n.parentElement, t = n.textContent.trim();
+        if (!t || t.length > 14 || !e || !visible(e) || e.closest('input, textarea, [contenteditable="true"], article, .prose, .typeset, [data-user-text]')) continue;
+        const own = (e.closest('button, [role="button"], [role="status"], [role="alert"]') || e).textContent.trim();
+        if (COLLOQ.test(t) || (own.length <= 14 && COLLOQ.test(own))) talky.push(`「${own.length <= 14 ? own : t}」`);
+      }
+      out.push(talky.length ? `✗ 字太口语：${new Set(talky).size} 处，例：${[...new Set(talky)].slice(0, 5).join('，')}（状态写 已X、待X，空状态写 暂无X，按钮写动作；不写整句）` : '✓ 口语：按钮、状态和空状态的短字都是书面写法');
+    }
   }
   return out.join('\n');
 })();
