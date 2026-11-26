@@ -446,6 +446,16 @@
       const tr = [...table.querySelectorAll('tbody tr')].find(r => r.getAttribute('aria-hidden') !== 'true' && r.children.length > 1);
       if (!tr) continue;
       const cells = [...tr.children];
+      // 窄屏把表格竖着排（2026-11-26 FBIF-演讲嘉宾同步 待发布：一格一行，整行本来就是几行高），逐格量：一行字的格子比「上下留白 + 一行字」高才算撑高
+      if (css(tr).display !== 'table-row') {
+        for (const td of cells) {
+          if (!visible(td) || textLines(td) > 1) continue;
+          const c = css(td), one = parseFloat(c.paddingTop) + parseFloat(c.paddingBottom) + (parseFloat(c.lineHeight) || 20) + parseFloat(c.borderTopWidth) + parseFloat(c.borderBottomWidth);
+          const h = td.getBoundingClientRect().height;
+          if (h > one + 2) { stretched.push(`${name(table)} 竖排的一格 ${Math.round(h)}px（一行字该是 ${Math.round(one)}）`); break; }
+        }
+        continue;
+      }
       if (cells.some(td => textLines(td) > 1)) continue;
       // 每格字号可以不一样（2026-11-25 FBIF-演讲嘉宾同步 对照表：第一格是小字标签，后面是正文），按最高的一格算
       const one = Math.max(...cells.map(td => { const c = css(td); return parseFloat(c.paddingTop) + parseFloat(c.paddingBottom) + (parseFloat(c.lineHeight) || 20) + parseFloat(c.borderTopWidth) + parseFloat(c.borderBottomWidth); }));

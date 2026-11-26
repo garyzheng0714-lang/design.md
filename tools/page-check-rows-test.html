@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- page-check.js 第 17 项（表格行被控件撑高）的测试页（2026-11-26）。
+     打开 ?case=bad：横排表格里 36 高的头像把行撑高；窄屏竖排的表格里，勾选框那格按文字基线坐、比一行字高 3px，两张表都要报 ✗。
+     打开 ?case=good：横排表格里头像用负的上下外边距伸进留白；竖排表格一格一行、整行三行高（本来就该这么高），都不该报。 -->
+<html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{font:14px/20px sans-serif;margin:24px;background:#fff;color:#111}
+table{border-collapse:separate;border-spacing:0;width:360px;margin:12px 0}
+td{padding:8px 12px;border-bottom:1px solid #eee}
+.av{display:inline-block;width:36px;height:36px;border-radius:50%;background:#ddd;vertical-align:middle}
+.in{display:flex;align-items:center;gap:8px;height:36px;margin:-8px 0}
+.stack tbody{display:block}.stack tr{display:flex;flex-wrap:wrap;align-items:center}.stack td{display:block;flex-basis:100%}
+.stack td.pick{flex-basis:auto}.stack td.name{flex:1;flex-basis:0}.stack td.sub{padding-top:0;padding-left:52px}
+.box{display:inline-block;width:20px;height:20px;border-radius:4px;background:#2383E2;vertical-align:baseline}
+.stack td.pick.ok{display:flex;align-items:center;align-self:stretch}
+</style></head><body>
+<div id="root"></div>
+<script>
+const bad = `
+  <table><tbody><tr><td><span class="av"></span> 张伟</td><td>乳品研发创新</td></tr></tbody></table>
+  <table class="stack"><tbody><tr><td class="pick"><span class="box"></span></td><td class="name">刘洋</td><td class="sub">中文职位 首席执行官 → 总裁</td></tr></tbody></table>`;
+const good = `
+  <table><tbody><tr><td><span class="in"><span class="av"></span>张伟</span></td><td>乳品研发创新</td></tr></tbody></table>
+  <table class="stack"><tbody><tr><td class="pick ok"><span class="box"></span></td><td class="name">刘洋</td><td class="sub">中文职位 首席执行官 → 总裁</td></tr></tbody></table>`;
+document.getElementById('root').innerHTML = new URLSearchParams(location.search).get('case') === 'bad' ? bad : good;
+</script>
+</body></html>
