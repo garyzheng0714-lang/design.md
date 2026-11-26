@@ -603,11 +603,12 @@
 
     // 26. 正文里有段落比正文小（2026-11-24 资讯订阅阅读器中外对照：外文原文一段用了 12 号说明字，正文 13 号，用户：字怎么那么小）：
     // .typeset、文章正文里，直接带字的段落都要和正文同一个字号；图注、表格、代码、上下标、时间不算。
+    // 图注除了 figcaption，还认 class 里带 caption 的段落（2026-11-26 FoodTalks-资讯订阅：原文图注挂 p.rss-caption、13 号灰字，被当成正文报了）
     {
       const small = [];
       for (const root of doc.querySelectorAll('.typeset, .article-body')) {
         if (!visible(root)) continue;
-        const blocks = [...root.querySelectorAll('p, li, blockquote, dd')].filter(el => visible(el) && !el.closest('figure, figcaption, table, pre, code, aside') && [...el.childNodes].some(n => n.nodeType === 3 && n.data.trim()));
+        const blocks = [...root.querySelectorAll('p, li, blockquote, dd')].filter(el => visible(el) && !el.closest('figure, figcaption, table, pre, code, aside, [class*="caption"]') && [...el.childNodes].some(n => n.nodeType === 3 && n.data.trim()));
         if (blocks.length < 3) continue;
         // 正文字号认容器自己的（Fluid .typeset 在容器上定正文字号）；不取段落里最常见的，中外对照时外文段落和中文一样多，会把小字当成正文
         const sizes = blocks.map(el => parseFloat(css(el).fontSize)), body = parseFloat(css(root).fontSize);
